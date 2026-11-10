@@ -18,6 +18,7 @@
 import { useState, useRef, useEffect } from 'react';
 import './App.css';
 import CourseCard, { type CourseCardData } from './components/CourseCard';
+import LandingPage from './components/LandingPage';
 
 // 一次工具调用的展示数据
 interface ToolCall {
@@ -47,6 +48,10 @@ interface Message {
 
 function App() {
   // ========== 状态管理 ==========
+
+  // 页面视图：landing（About 落地页）/ chat（聊天助手）
+  const [view, setView] = useState<'landing' | 'chat'>('landing');
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -83,8 +88,9 @@ function App() {
   };
 
   // ========== 核心函数：发送消息 ==========
-  const handleSend = async () => {
-    const userContent = input.trim();
+  // overrideText：快捷指令按钮直接传入问题文本；为空则用输入框内容
+  const handleSend = async (overrideText?: string) => {
+    const userContent = (overrideText ?? input).trim();
     if (!userContent || isLoading) return;
 
     // 1. 添加用户消息
@@ -258,10 +264,27 @@ function App() {
     }
   };
 
-  // ========== 渲染 UI ==========
+  // ========== 渲染：落地页 ==========
+  if (view === 'landing') {
+    return <LandingPage onEnter={() => setView('chat')} />;
+  }
+
+  // 快捷指令（借鉴 StudyAI"方便找到任务"的交互重点）：
+  // 把最高频的办事入口做成一键提问，降低用户的学习成本
+  const QUICK_PROMPTS = [
+    '我周二有什么课？',
+    '请假需要什么流程？',
+    '图书馆能借几本书？',
+    '奖学金怎么评？',
+  ];
+
+  // ========== 渲染：聊天页 ==========
   return (
     <div className="chat-container">
       <header className="chat-header">
+        <button className="back-button" onClick={() => setView('landing')} title="返回首页">
+          ←
+        </button>
         <h1>校园智能办事助手</h1>
         <span className="subtitle">AI Agent · 课表查询 · 制度咨询 · 办事指南</span>
       </header>
@@ -317,6 +340,20 @@ function App() {
       </main>
 
       <footer className="input-area">
+        {/* 快捷指令面板：一键提问高频问题 */}
+        <div className="quick-prompts">
+          {QUICK_PROMPTS.map((q) => (
+            <button
+              key={q}
+              className="quick-chip"
+              disabled={isLoading}
+              onClick={() => handleSend(q)}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+
         <div className="input-wrapper">
           <input
             ref={inputRef}
@@ -329,7 +366,7 @@ function App() {
             className="chat-input"
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isLoading || !input.trim()}
             className="send-button"
           >

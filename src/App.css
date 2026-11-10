@@ -330,6 +330,337 @@
   color: #888;
 }
 
+/* ========== About 落地页 ========== */
+.landing {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f6f5ff 0%, #f5f5f5 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #333;
+}
+
+.landing-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 6vw;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.landing-logo {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-nav-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.landing-hero {
+  text-align: center;
+  padding: 56px 20px 32px;
+}
+
+.landing-badge {
+  display: inline-block;
+  font-size: 12px;
+  color: #667eea;
+  background: #eceafe;
+  border: 1px solid #d9d0f0;
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+
+.landing-title {
+  font-size: 44px;
+  margin: 0 0 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-subtitle {
+  font-size: 17px;
+  color: #666;
+  margin: 0 0 28px;
+}
+
+.landing-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+
+.landing-cta {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 13px 32px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+  transition: transform 0.15s;
+}
+
+.landing-cta:hover {
+  transform: translateY(-2px);
+}
+
+.landing-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 13px 24px;
+  border-radius: 999px;
+  font-size: 15px;
+  color: #667eea;
+  border: 1px solid #d9d0f0;
+  text-decoration: none;
+  background: white;
+}
+
+/* 今日课程预览卡片 */
+.landing-today {
+  display: flex;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.today-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  padding: 16px 20px;
+  width: 100%;
+  max-width: 560px;
+}
+
+.today-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.today-meta {
+  color: #999;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.today-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 14px;
+  align-items: baseline;
+}
+
+.today-item + .today-item {
+  border-top: 1px dashed #eee;
+}
+
+.today-time {
+  color: #667eea;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.today-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.today-room {
+  color: #999;
+  font-size: 12px;
+}
+
+/* 核心亮点 */
+.section-title {
+  text-align: center;
+  font-size: 24px;
+  margin: 48px 0 24px;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  padding: 0 6vw;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  position: relative;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.feature-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(102, 126, 234, 0.18);
+}
+
+.feature-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.feature-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.feature-desc {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.feature-tag {
+  display: inline-block;
+  font-size: 11px;
+  color: #667eea;
+  background: #eceafe;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+/* 使用流程 */
+.steps-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 0 6vw;
+  flex-wrap: wrap;
+}
+
+.step-card {
+  background: white;
+  border-radius: 14px;
+  padding: 22px;
+  width: 240px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  position: relative;
+}
+
+.step-number {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-icon {
+  font-size: 30px;
+  margin: 6px 0 8px;
+}
+
+.step-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.step-desc {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* 底部 */
+.landing-footer {
+  text-align: center;
+  padding: 48px 20px 40px;
+}
+
+.landing-footer-note {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* ========== 聊天页：返回按钮 + 快捷指令 ========== */
+.back-button {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.chat-header {
+  position: relative;
+}
+
+.quick-prompts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.quick-chip {
+  background: #f2f0fb;
+  color: #5b4b8a;
+  border: 1px solid #ddd5f0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.quick-chip:hover:not(:disabled) {
+  background: #e4dff7;
+}
+
+.quick-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ========== 滚动条美化 ========== */
 .messages-area::-webkit-scrollbar {
   width: 6px;
