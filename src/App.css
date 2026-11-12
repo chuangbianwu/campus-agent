@@ -285,6 +285,45 @@ body {
 .room-cap { font-size: 11px; color: var(--dim); flex-shrink: 0; }
 .room-meta { font-size: 11.5px; color: var(--dim); margin-top: 2px; line-height: 1.6; }
 
+/* ---------- 请假申请表卡片（对话即办事：琥珀主按钮是唯一行动点） ---------- */
+.leave-card {
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: rgba(233, 237, 247, 0.03);
+  min-width: 320px; max-width: 420px;
+}
+.leave-card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px; font-weight: 700;
+}
+.leave-card-badge {
+  font-size: 10.5px; padding: 1px 8px; border-radius: 999px;
+  color: var(--ok); border: 1px solid rgba(62, 207, 142, 0.3);
+}
+.leave-card-body { padding: 6px 14px; }
+.leave-row { display: flex; gap: 12px; padding: 6px 0; font-size: 12.5px; }
+.leave-row + .leave-row { border-top: 1px dashed var(--hairline); }
+.leave-label { color: var(--dim); width: 34px; flex-shrink: 0; }
+.leave-basis { color: var(--dim); font-size: 11.5px; }
+.leave-card-foot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px 12px;
+}
+.leave-btn {
+  border: none; border-radius: 9px; cursor: pointer;
+  background: var(--lamp); color: #1A1206;
+  font-size: 12.5px; font-weight: 700; font-family: inherit;
+  padding: 7px 16px;
+  transition: transform 0.15s var(--ease-out), background 0.2s;
+}
+.leave-btn:hover:not(:disabled) { background: var(--lamp-strong); }
+.leave-btn:active:not(:disabled) { transform: scale(0.95); }
+.leave-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.leave-hint { font-size: 11px; color: var(--dim); }
+
 /* ---------- 来源引用 Tag ---------- */
 .citation-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .citation-tag {

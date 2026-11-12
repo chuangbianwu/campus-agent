@@ -50,7 +50,7 @@ export interface ToolResult {
    * 数据准确、样式统一，还不会浪费 token 让大模型画表格
    */
   card?: {
-    type: 'courses' | 'free_rooms'; // 卡片类型，前端按类型选组件（以后可扩展 policies 等）
+    type: 'courses' | 'free_rooms' | 'leave_form'; // 卡片类型，前端按类型选组件（以后可扩展 policies 等）
     data: unknown;
   };
   /**
@@ -185,7 +185,7 @@ const campusPolicyTool: Tool = {
     }
 
     // 给大模型的数据：相关条款 + 明确出处，方便它组织带引用的回答
-    return {
+    const payload: ToolResult = {
       data: JSON.stringify({
         found: true,
         passages: results.map((r) => ({
@@ -203,6 +203,23 @@ const campusPolicyTool: Tool = {
         text: r.text,
       })),
     };
+
+    // 命中请假制度 → 附带"请假申请表"卡片，前端可一键生成预填的 .docx（对话即办事）
+    const leaveHits = results.filter((r) => r.docTitle.includes('请假'));
+    if (leaveHits.length > 0) {
+      payload.card = {
+        type: 'leave_form',
+        data: {
+          student: coursesData.student,
+          major: coursesData.major,
+          grade: coursesData.grade,
+          basis: leaveHits.map((r) => `《${r.docTitle}》${r.section}`).join('；'),
+          rules: leaveHits.map((r) => r.text),
+        },
+      };
+    }
+
+    return payload;
   },
 };
 
