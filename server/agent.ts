@@ -197,6 +197,14 @@ export async function runAgentChat(
         });
       }
 
+      // 如果工具返回了引用原文（RAG），转发给前端做"来源引用"UI
+      if (toolResult.citations) {
+        sendEvent({
+          type: 'citations',
+          items: toolResult.citations,
+        });
+      }
+
       // 把工具结果加入对话历史，role 必须是 'tool'
       chatMessages.push({
         role: 'tool',

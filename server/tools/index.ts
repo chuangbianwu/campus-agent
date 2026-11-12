@@ -52,6 +52,15 @@ export interface ToolResult {
     type: 'courses'; // 卡片类型，前端按类型选组件（以后可扩展 policies 等）
     data: unknown;
   };
+  /**
+   * 可选：RAG 引用溯源数据（来源引用 UI）
+   * 前端在气泡底部渲染"来源"Tag，点击弹出右侧抽屉显示原文
+   */
+  citations?: Array<{
+    title: string;   // 来源文档名
+    section: string; // 小节
+    text: string;    // 条款原文
+  }>;
 }
 
 /** 工具对象的结构 */
@@ -186,6 +195,12 @@ const campusPolicyTool: Tool = {
       }),
       // 给前端的摘要：展示检索到了哪些出处（引用溯源可视化）
       summary: `检索到 ${results.length} 条相关条款：${results.map((r) => `《${r.docTitle}》`).join('、')}`,
+      // 引用原文：前端"来源"Tag + 抽屉展示用
+      citations: results.map((r) => ({
+        title: r.docTitle,
+        section: r.section,
+        text: r.text,
+      })),
     };
   },
 };

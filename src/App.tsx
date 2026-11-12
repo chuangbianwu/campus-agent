@@ -1,384 +1,273 @@
-/**
- * 校园智能办事 Agent - 前端主界面（Day 2 升级版）
- *
- * 新增功能：Agent 思考过程可视化
- * - 当 AI 调用工具时，消息气泡上方会显示工具卡片：
- *   "🔧 课表查询（执行中...）" → "✅ 查询了周二的课表：共 3 门课"
- * - 这是比赛"用户体验"和"AI 技术深度"的加分项：
- *   评委能直观看到 Agent 的决策过程，而不是一个黑盒
- *
- * 后端 SSE 事件协议（与 server/index.ts 约定）：
- *   {"type":"tool_call",   "id", "label", "args"}     → Agent 决定调工具
- *   {"type":"tool_result", "id", "label", "summary"}  → 工具执行完毕
- *   {"type":"delta",       "content"}                 → 回复文字
- *   {"type":"error",       "content"}                 → 出错
- *   [DONE]                                            → 结束
- */
-
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import CourseCard, { type CourseCardData } from '@/components/CourseCard';
+import ThinkingSteps, { type ToolCallInfo } from '@/components/ThinkingSteps';
+import CitationDrawer, { type Citation } from '@/components/CitationDrawer';
+import Rail, { NAV_TITLES, QUICK_PROMPTS, type NavKey } from '@/components/Rail';
+import Board from '@/components/Board';
+import AboutView from '@/components/AboutView';
 import './App.css';
-import CourseCard, { type CourseCardData } from './components/CourseCard';
-import LandingPage from './components/LandingPage';
 
-// 一次工具调用的展示数据
-interface ToolCall {
-  id: string;                 // 工具调用 ID（用于配对结果）
-  label: string;              // 工具名称（如"课表查询"）
-  args: Record<string, unknown>; // 调用参数
-  status: 'running' | 'done'; // 执行中 / 已完成
-  summary?: string;           // 执行结果摘要
-  icon?: string;              // 自定义图标（如安全护栏用 🛡️）
-}
-
-// 结构化卡片数据（生成式 UI）
-interface Card {
-  cardType: 'courses';        // 卡片类型（以后可扩展）
-  data: CourseCardData;
-}
-
-// 消息类型定义
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  isStreaming?: boolean;
-  toolCalls?: ToolCall[];     // 这条 AI 消息关联的工具调用记录
-  cards?: Card[];             // 这条 AI 消息关联的生成式 UI 卡片
+  toolCalls?: ToolCallInfo[];
+  cards?: { cardType: string; data: CourseCardData }[];
+  citations?: Citation[];
+  safety?: string;
 }
 
-function App() {
-  // ========== 状态管理 ==========
-
-  // 页面视图：landing（About 落地页）/ chat（聊天助手）
-  const [view, setView] = useState<'landing' | 'chat'>('landing');
-
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: '你好！我是校园智能办事助手。试试问我：\n· 我周二有什么课？\n· 请假需要什么流程？\n· 图书馆能借几本书？',
-    }
-  ]);
-
+export default function App() {
+  const [nav, setNav] = useState<NavKey>('assistant');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [drawer, setDrawer] = useState<Citation[] | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lampGlowRef = useRef<HTMLDivElement>(null);
+  const coolGlowRef = useRef<HTMLDivElement>(null);
 
-  // ========== Refs ==========
-  const inputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // 每当 messages 变化时，自动滚动到最新消息
+  // 粒子场背景（低亮度星点连线，营造氛围但不抢焦点）
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let w = 0, h = 0, raf = 0, t = 0;
+    const resize = () => { w = canvas.width = innerWidth; h = canvas.height = innerHeight; };
+    resize();
+    addEventListener('resize', resize);
+    const N = innerWidth < 900 ? 45 : 85;
+    const ps = Array.from({ length: N }, () => ({
+      x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+      vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25,
+      r: Math.random() * 1.4 + 0.4, tw: Math.random() * Math.PI * 2,
+    }));
+    const step = () => {
+      t += 0.008;
+      ctx.clearRect(0, 0, w, h);
+      for (const p of ps) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+        if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+        ctx.fillStyle = `rgba(140,160,220,${0.25 + 0.2 * Math.sin(t * 2 + p.tw)})`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+      }
+      for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+        const dx = ps[i].x - ps[j].x, dy = ps[i].y - ps[j].y, d = dx * dx + dy * dy;
+        if (d < 130 * 130) {
+          ctx.strokeStyle = `rgba(120,140,200,${(1 - d / (130 * 130)) * 0.08})`;
+          ctx.beginPath(); ctx.moveTo(ps[i].x, ps[i].y); ctx.lineTo(ps[j].x, ps[j].y); ctx.stroke();
+        }
+      }
+      raf = requestAnimationFrame(step);
+    };
+    step();
+    return () => { cancelAnimationFrame(raf); removeEventListener('resize', resize); };
+  }, []);
+
+  // 两盏"灯光"随鼠标轻微视差
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const nx = e.clientX / innerWidth - 0.5, ny = e.clientY / innerHeight - 0.5;
+      if (lampGlowRef.current) lampGlowRef.current.style.transform = `translate(${nx * 18}px,${ny * 14}px)`;
+      if (coolGlowRef.current) coolGlowRef.current.style.transform = `translate(${nx * -22}px,${ny * -16}px)`;
+    };
+    addEventListener('mousemove', onMove);
+    return () => removeEventListener('mousemove', onMove);
+  }, []);
+
+  // 新消息自动滚到底部
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  /**
-   * 更新指定 AI 消息的工具调用记录
-   * @param messageId 消息 ID
-   * @param updater 对 toolCalls 数组的修改函数
-   */
-  const updateToolCalls = (messageId: string, updater: (calls: ToolCall[]) => ToolCall[]) => {
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.id === messageId
-          ? { ...msg, toolCalls: updater(msg.toolCalls || []) }
-          : msg
-      )
-    );
-  };
-
-  // ========== 核心函数：发送消息 ==========
-  // overrideText：快捷指令按钮直接传入问题文本；为空则用输入框内容
-  const handleSend = async (overrideText?: string) => {
-    const userContent = (overrideText ?? input).trim();
-    if (!userContent || isLoading) return;
-
-    // 1. 添加用户消息
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: userContent,
-    };
-    setMessages(prev => [...prev, userMessage]);
+  const ask = async (text?: string) => {
+    const q = (text ?? input).trim();
+    if (!q || loading) return;
     setInput('');
-    setIsLoading(true);
-
-    // 2. 准备发送给后端的消息（只发 role + content）
-    const apiMessages = [...messages, userMessage].map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
-
-    // 3. 创建一条空的 AI 消息，接收流式内容
-    const aiMessageId = (Date.now() + 1).toString();
-    const aiMessage: Message = {
-      id: aiMessageId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-      toolCalls: [],
-    };
-
+    setLoading(true);
+    const userMsg: Message = { id: `u${Date.now()}`, role: 'user', content: q };
+    const aiMsg: Message = { id: `a${Date.now()}`, role: 'assistant', content: '', toolCalls: [] };
+    setMessages((m) => [...m, userMsg, aiMsg]);
     try {
-      // 请求同源接口（由 Vite 服务器的 campus-api 插件处理，见 vite.config.ts）
-      const response = await fetch('/api/chat', {
+      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: history }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '请求失败');
-      }
-
-      setMessages(prev => [...prev, aiMessage]);
-
-      // 4. 读取 SSE 流
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('无法读取响应流');
-
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data: ')) continue;
-          const data = trimmed.slice(6);
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() ?? '';
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
           if (data === '[DONE]') continue;
-
           try {
-            const json = JSON.parse(data);
-
-            // ---- 事件 1：Agent 决定调用工具 ----
-            if (json.type === 'tool_call') {
-              updateToolCalls(aiMessageId, calls => [
-                ...calls,
-                {
-                  id: json.id,
-                  label: json.label,
-                  args: json.args || {},
-                  status: 'running',
-                },
-              ]);
-            }
-
-            // ---- 事件 2：工具执行完毕 ----
-            else if (json.type === 'tool_result') {
-              updateToolCalls(aiMessageId, calls =>
-                calls.map(c =>
-                  c.id === json.id
-                    ? { ...c, status: 'done', label: json.label, summary: json.summary }
-                    : c
-                )
-              );
-            }
-
-            // ---- 事件 2.5：结构化卡片（生成式 UI）----
-            else if (json.type === 'card') {
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === aiMessageId
-                    ? { ...msg, cards: [...(msg.cards || []), { cardType: json.cardType, data: json.data }] }
-                    : msg
-                )
-              );
-            }
-
-            // ---- 事件 3：回复文字（追加到气泡）----
-            else if (json.type === 'delta' && json.content) {
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === aiMessageId
-                    ? { ...msg, content: msg.content + json.content }
-                    : msg
-                )
-              );
-            }
-
-            // ---- 事件 3.5：安全护栏拦截 ----
-            else if (json.type === 'safety') {
-              updateToolCalls(aiMessageId, calls => [
-                ...calls,
-                {
-                  id: `safety-${Date.now()}`,
-                  label: '安全护栏',
-                  args: {},
-                  status: 'done',
-                  summary: '拦截了可疑输入（未调用大模型）',
-                  icon: '🛡️',
-                },
-              ]);
-            }
-
-            // ---- 事件 4：后端报错 ----
-            else if (json.type === 'error') {
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === aiMessageId
-                    ? { ...msg, content: msg.content + `\n\n⚠️ ${json.content}` }
-                    : msg
-                )
-              );
-            }
-          } catch {
-            // 忽略解析失败的行
-          }
+            const ev = JSON.parse(data);
+            setMessages((msgs) => {
+              const next = [...msgs];
+              const msg = { ...next[next.length - 1] };
+              if (ev.type === 'delta') {
+                msg.content += ev.content;
+              } else if (ev.type === 'tool_call') {
+                msg.toolCalls = [...(msg.toolCalls ?? []), { id: ev.id, label: ev.label, status: 'running' as const }];
+              } else if (ev.type === 'tool_result') {
+                msg.toolCalls = (msg.toolCalls ?? []).map((t) =>
+                  t.id === ev.id ? { ...t, status: 'done' as const, summary: ev.summary } : t
+                );
+              } else if (ev.type === 'card') {
+                msg.cards = [...(msg.cards ?? []), { cardType: ev.cardType, data: ev.data }];
+              } else if (ev.type === 'citations') {
+                msg.citations = ev.items;
+              } else if (ev.type === 'safety') {
+                msg.safety = ev.rule;
+              } else if (ev.type === 'error') {
+                msg.content = String(ev.message ?? ev.content ?? '未知错误');
+              }
+              next[next.length - 1] = msg;
+              return next;
+            });
+          } catch { /* 忽略不完整的行 */ }
         }
       }
-
-      // 5. 流结束
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === aiMessageId ? { ...msg, isStreaming: false } : msg
-        )
-      );
-    } catch (error: any) {
-      setMessages(prev => [
-        ...prev,
-        {
-          id: (Date.now() + 2).toString(),
-          role: 'assistant',
-          content: `抱歉，发生了错误：${error.message || '未知错误'}`,
-        }
-      ]);
-    } finally {
-      setIsLoading(false);
-      inputRef.current?.focus();
+    } catch (e) {
+      const errText = `请求失败：${e instanceof Error ? e.message : '网络错误'}。请确认服务已启动且 .env 中配置了 DEEPSEEK_API_KEY。`;
+      setMessages((msgs) => {
+        const next = [...msgs];
+        next[next.length - 1] = { ...next[next.length - 1], content: errText };
+        return next;
+      });
     }
+    setLoading(false);
   };
 
-  // 按 Enter 发送（Shift+Enter 换行）
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const chips = QUICK_PROMPTS[nav] ?? [];
+  const showChat = nav !== 'about';
+  const lastId = messages.length ? messages[messages.length - 1].id : '';
 
-  // ========== 渲染：落地页 ==========
-  if (view === 'landing') {
-    return <LandingPage onEnter={() => setView('chat')} />;
-  }
-
-  // 快捷指令（借鉴 StudyAI"方便找到任务"的交互重点）：
-  // 把最高频的办事入口做成一键提问，降低用户的学习成本
-  const QUICK_PROMPTS = [
-    '我周二有什么课？',
-    '请假需要什么流程？',
-    '图书馆能借几本书？',
-    '奖学金怎么评？',
-  ];
-
-  // ========== 渲染：聊天页 ==========
   return (
-    <div className="chat-container">
-      <header className="chat-header">
-        <button className="back-button" onClick={() => setView('landing')} title="返回首页">
-          ←
-        </button>
-        <h1>校园智能办事助手</h1>
-        <span className="subtitle">AI Agent · 课表查询 · 制度咨询 · 办事指南</span>
-      </header>
+    <>
+      <canvas ref={canvasRef} className="bg-canvas" />
+      <div ref={lampGlowRef} className="bg-lampglow" />
+      <div ref={coolGlowRef} className="bg-coolglow" />
 
-      <main className="messages-area">
-        {messages.map(msg => (
-          <div
-            key={msg.id}
-            className={`message ${msg.role === 'user' ? 'user-message' : 'ai-message'}`}
-          >
-            <div className="avatar">
-              {msg.role === 'user' ? '你' : 'AI'}
-            </div>
+      <div className="shell">
+        <Rail active={nav} onChange={setNav} />
 
-            <div className="message-body">
-              {/* 工具调用卡片：展示 Agent 的思考过程 */}
-              {msg.toolCalls && msg.toolCalls.length > 0 && (
-                <div className="tool-calls">
-                  {msg.toolCalls.map(tc => (
-                    <div key={tc.id} className={`tool-call ${tc.status}`}>
-                      <span className="tool-icon">
-                        {tc.icon || (tc.status === 'running' ? '⏳' : '🔧')}
-                      </span>
-                      <span className="tool-label">{tc.label}</span>
-                      <span className="tool-status">
-                        {tc.status === 'running'
-                          ? '调用中...'
-                          : tc.summary || '已完成'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* 生成式 UI 卡片（课程表等） */}
-              {msg.cards?.map((card, i) =>
-                card.cardType === 'courses' ? (
-                  <CourseCard key={i} data={card.data} />
-                ) : null
-              )}
-
-              {/* 消息气泡 */}
-              <div className="bubble">
-                <div className="content" style={{ whiteSpace: 'pre-wrap' }}>
-                  {msg.content}
-                </div>
-                {msg.isStreaming && <span className="cursor-blink">▋</span>}
+        <main className="panel">
+          {showChat ? (
+            <>
+              <div className="chat-head">
+                <div className="chat-title">{NAV_TITLES[nav].title}</div>
+                <div className="chat-note">{NAV_TITLES[nav].note}</div>
               </div>
-            </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </main>
 
-      <footer className="input-area">
-        {/* 快捷指令面板：一键提问高频问题 */}
-        <div className="quick-prompts">
-          {QUICK_PROMPTS.map((q) => (
-            <button
-              key={q}
-              className="quick-chip"
-              disabled={isLoading}
-              onClick={() => handleSend(q)}
-            >
-              {q}
-            </button>
-          ))}
-        </div>
+              <div className="chat-body" ref={scrollRef}>
+                {messages.length === 0 && (
+                  <div className="hero">
+                    <div className="hero-logo">勤</div>
+                    <div className="hero-h">今晚想办点什么？</div>
+                    <div className="hero-sub">问课表、查制度、找流程，一次说清楚。</div>
+                  </div>
+                )}
 
-        <div className="input-wrapper">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="输入你的问题，按 Enter 发送..."
-            disabled={isLoading}
-            className="chat-input"
-          />
-          <button
-            onClick={() => handleSend()}
-            disabled={isLoading || !input.trim()}
-            className="send-button"
-          >
-            {isLoading ? '发送中...' : '发送'}
-          </button>
-        </div>
-        <div className="status-bar">
-          {isLoading ? 'AI 正在思考中...' : '就绪'}
-        </div>
-      </footer>
-    </div>
+                {messages.map((m) => (
+                  <div key={m.id} className={`msg ${m.role === 'user' ? 'user' : 'ai'}`}>
+                    <div className="avatar">{m.role === 'user' ? '我' : 'AI'}</div>
+                    <div className="msg-body">
+                      {m.role === 'assistant' && (m.toolCalls?.length ?? 0) > 0 && (
+                        <ThinkingSteps
+                          toolCalls={m.toolCalls!}
+                          streaming={loading && m.id === lastId}
+                        />
+                      )}
+                      {m.content && (
+                        <div className="bubble">
+                          <ReactMarkdown>{m.content}</ReactMarkdown>
+                        </div>
+                      )}
+                      {m.cards?.map((c, i) =>
+                        c.cardType === 'courses' ? <CourseCard key={i} data={c.data} /> : null
+                      )}
+                      {m.safety && <div className="safety-tag">🛡 安全护栏已触发（{m.safety}）</div>}
+                      {m.citations && m.citations.length > 0 && (
+                        <div className="citation-row">
+                          {m.citations.map((c, i) => (
+                            <button
+                              key={i}
+                              className="citation-tag"
+                              onClick={() => setDrawer(m.citations!)}
+                            >
+                              📚 来源：《{c.title}》{c.section ? ` · ${c.section}` : ''}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="chat-foot">
+                {chips.length > 0 && (
+                  <div className="quick-row">
+                    {chips.map((c) => (
+                      <button key={c} className="chip" disabled={loading} onClick={() => ask(c)}>
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="input-row">
+                  <div className="input-box">
+                    <textarea
+                      className="chat-input"
+                      rows={1}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+                      }}
+                      placeholder="输入问题，Enter 发送…"
+                    />
+                    <button
+                      className="send-btn"
+                      disabled={loading || !input.trim()}
+                      onClick={() => ask()}
+                      title="发送"
+                    >
+                      ↑
+                    </button>
+                  </div>
+                </div>
+                <div className="status-line">deepseek-chat · Function Calling · 自实现 BM25 RAG</div>
+              </div>
+            </>
+          ) : (
+            <AboutView />
+          )}
+        </main>
+
+        <Board />
+      </div>
+
+      <CitationDrawer
+        open={drawer !== null}
+        onClose={() => setDrawer(null)}
+        citations={drawer ?? []}
+      />
+    </>
   );
 }
-
-export default App;

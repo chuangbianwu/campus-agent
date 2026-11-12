@@ -42,9 +42,10 @@ export function chunkDocument(doc: RawDoc): Chunk[] {
     .map((part) => part.trim())
     .filter((part) => part.length > 0)
     .map((part, index) => {
-      // 提取小节标题（第一行的前 20 个字，用于展示出处）
+      // 提取小节标题（取第一行到第一个冒号/句号为止，如"三、请假流程"）
       const firstLine = part.split('\n')[0];
-      const section = firstLine.length > 20 ? firstLine.slice(0, 20) + '…' : firstLine;
+      const heading = firstLine.split(/[：:。]/)[0];
+      const section = heading.length > 20 ? heading.slice(0, 20) + '…' : heading;
 
       return {
         id: `${doc.id}-${index}`,
