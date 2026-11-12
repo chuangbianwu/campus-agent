@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import CourseCard, { type CourseCardData } from '@/components/CourseCard';
+import FreeRoomCard, { type FreeRoomCardData } from '@/components/FreeRoomCard';
 import ThinkingSteps, { type ToolCallInfo } from '@/components/ThinkingSteps';
 import CitationDrawer, { type Citation } from '@/components/CitationDrawer';
 import Rail, { NAV_TITLES, QUICK_PROMPTS, type NavKey } from '@/components/Rail';
@@ -13,7 +14,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   toolCalls?: ToolCallInfo[];
-  cards?: { cardType: string; data: CourseCardData }[];
+  cards?: { cardType: string; data: CourseCardData | FreeRoomCardData }[];
   citations?: Citation[];
   safety?: string;
 }
@@ -199,7 +200,11 @@ export default function App() {
                         </div>
                       )}
                       {m.cards?.map((c, i) =>
-                        c.cardType === 'courses' ? <CourseCard key={i} data={c.data} /> : null
+                        c.cardType === 'courses' ? (
+                          <CourseCard key={i} data={c.data as CourseCardData} />
+                        ) : c.cardType === 'free_rooms' ? (
+                          <FreeRoomCard key={i} data={c.data as FreeRoomCardData} />
+                        ) : null
                       )}
                       {m.safety && <div className="safety-tag">🛡 安全护栏已触发（{m.safety}）</div>}
                       {m.citations && m.citations.length > 0 && (

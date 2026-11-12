@@ -19,8 +19,8 @@ const NAV_ITEMS: Array<{ key: NavKey; label: string; count?: number }> = [
 
 /** 每个栏目对应的快捷提示词 */
 export const QUICK_PROMPTS: Record<NavKey, string[]> = {
-  assistant: ['我周二有什么课？', '请假需要什么流程？', '图书馆能借几本书？', '奖学金怎么评？'],
-  schedule: ['今天有课吗？', '明天有什么课？', '周五下午有课吗？', '周三有哪些课？'],
+  assistant: ['明天下午没课的话，去哪自习？', '我周二有什么课？', '请假需要什么流程？', '奖学金怎么评？'],
+  schedule: ['今天有课吗？', '明天有什么课？', '周五下午有课吗？', '没课时去哪自习？'],
   knowledge: ['怎么请假？', '借书逾期怎么收费？', '奖学金加分项有哪些？', '宿舍晚上几点关门？'],
   about: [],
 };

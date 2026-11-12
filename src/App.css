@@ -256,6 +256,35 @@ body {
 .course-type-badge.req { color: var(--lamp); border-color: var(--lamp-line); }
 .course-meta { font-size: 11.5px; color: var(--dim); margin-top: 1px; }
 
+/* ---------- 空闲教室卡片（刻意安静：不抢课程卡片的戏） ---------- */
+.room-card {
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: rgba(233, 237, 247, 0.03);
+  min-width: 340px; max-width: 460px;
+}
+.room-card-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px; font-weight: 700;
+}
+.room-card-count { font-size: 11.5px; color: var(--ok); font-weight: 400; }
+.room-card-body { display: flex; flex-direction: column; }
+.room-item { display: flex; gap: 10px; padding: 10px 14px; align-items: flex-start; }
+.room-item + .room-item { border-top: 1px dashed var(--hairline); }
+.room-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ok); margin-top: 6px; flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(62, 207, 142, 0.5);
+}
+.room-info { flex: 1; min-width: 0; }
+.room-name-row { display: flex; align-items: baseline; gap: 8px; }
+.room-name { font-size: 13.5px; font-weight: 600; }
+.room-cap { font-size: 11px; color: var(--dim); flex-shrink: 0; }
+.room-meta { font-size: 11.5px; color: var(--dim); margin-top: 2px; line-height: 1.6; }
+
 /* ---------- 来源引用 Tag ---------- */
 .citation-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .citation-tag {

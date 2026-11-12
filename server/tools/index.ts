@@ -16,6 +16,7 @@ import { searchPolicies } from '../rag/index';
 // 部署到 Vercel 时打包器会自动把数据文件打包进去，
 // 不存在"线上找不到文件"的问题；本地开发两种环境（tsx / Vite）也都支持
 import coursesDataJson from '../data/courses.json';
+import freeRoomsDataJson from '../data/free_rooms.json';
 
 // 制度文档不再整篇加载到工具里，改由 server/rag 模块切片建索引后按需检索
 
@@ -49,7 +50,7 @@ export interface ToolResult {
    * 数据准确、样式统一，还不会浪费 token 让大模型画表格
    */
   card?: {
-    type: 'courses'; // 卡片类型，前端按类型选组件（以后可扩展 policies 等）
+    type: 'courses' | 'free_rooms'; // 卡片类型，前端按类型选组件（以后可扩展 policies 等）
     data: unknown;
   };
   /**
@@ -205,9 +206,91 @@ const campusPolicyTool: Tool = {
   },
 };
 
+// ========== 工具 3：空闲教室查询 ==========
+
+interface FreeRoom {
+  id: string;
+  building: string;
+  room: string;
+  capacity: number;
+  facilities: string[];
+  free: Record<string, string[]>;
+}
+const freeRoomsData = freeRoomsDataJson as { note: string; rooms: FreeRoom[] };
+
+const freeRoomsTool: Tool = {
+  label: '空闲教室查询',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'query_free_rooms',
+      // 典型触发："明天下午没课，去哪自习？"——大模型会先查课表再调这个工具（多轮工具链）
+      description: '查询某一天某个时段的空闲教室/自习场所，可用来回答"没课的时候能去哪自习"。支持按时段（上午/下午/晚上）筛选',
+      parameters: {
+        type: 'object',
+        properties: {
+          day: {
+            type: 'string',
+            description: '要查询的日期，如"周一"~"周五"，或"今天""明天""后天"',
+          },
+          period: {
+            type: 'string',
+            description: '可选，时段筛选："上午"、"下午"或"晚上"；不传则返回全天有空闲的场所',
+          },
+        },
+        required: ['day'],
+      },
+    },
+  },
+  execute: (args) => {
+    const day = resolveDay(String(args.day || ''));
+    const period = args.period ? String(args.period) : '';
+
+    if (day === '周六' || day === '周日') {
+      return {
+        data: JSON.stringify({ day, rooms: [], message: `${day}是周末，教室全部开放，不需要查询` }),
+        summary: `${day}是周末，教室全开放`,
+      };
+    }
+
+    // 筛选：该天有空闲，且（若指定时段）该时段空闲
+    const matched = freeRoomsData.rooms
+      .map((r) => {
+        const freePeriods = r.free[day] ?? [];
+        const hit = period ? freePeriods.includes(period) : freePeriods.length > 0;
+        return { room: r, freePeriods, hit };
+      })
+      .filter((x) => x.hit)
+      // 容量大的排前面，自习体验更好
+      .sort((a, b) => b.room.capacity - a.room.capacity);
+
+    if (matched.length === 0) {
+      return {
+        data: JSON.stringify({ day, period, rooms: [], message: `${day}${period || '全天'}没有空闲教室` }),
+        summary: `${day}${period}没有查到空闲教室`,
+      };
+    }
+
+    const rooms = matched.map(({ room, freePeriods }) => ({
+      building: room.building,
+      room: room.room,
+      capacity: room.capacity,
+      facilities: room.facilities,
+      freePeriods,
+    }));
+
+    return {
+      data: JSON.stringify({ day, period: period || '全天', rooms }),
+      summary: `查询了${day}${period || '全天'}的空闲教室：共 ${rooms.length} 处`,
+      // 结构化卡片：前端渲染空闲教室列表
+      card: { type: 'free_rooms', data: { day, period: period || '全天', rooms } },
+    };
+  },
+};
+
 // ========== 注册表：所有工具的入口 ==========
 
-export const tools: Tool[] = [courseScheduleTool, campusPolicyTool];
+export const tools: Tool[] = [courseScheduleTool, campusPolicyTool, freeRoomsTool];
 
 /** 给大模型的工具定义列表（只要 definition 部分） */
 export function getToolDefinitions() {
