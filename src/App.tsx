@@ -33,6 +33,10 @@ export default function App() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [drawer, setDrawer] = useState<Citation[] | null>(null);
+  // 语音输入：Web Speech API（Chrome/Edge 支持中文识别）
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
+  const voiceBaseRef = useRef(''); // 开始录音时输入框里已有的文字
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lampGlowRef = useRef<HTMLDivElement>(null);
@@ -107,9 +111,43 @@ export default function App() {
     setNav('assistant');
   };
 
+  /**
+   * 语音输入开关
+   * 设计决策：识别结果只填进输入框，不自动发送——
+   * 给用户一次检查修改的机会，避免识别错字直接发出去（演示更稳）
+   */
+  const toggleVoice = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const w = window as unknown as Record<string, unknown>;
+    const SR = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as (new () => any) | undefined;
+    if (!SR) {
+      alert('当前浏览器不支持语音输入，请用 Chrome / Edge 打开');
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'zh-CN';
+    rec.interimResults = true; // 边说边出字，反馈感强
+    rec.continuous = false;
+    voiceBaseRef.current = input ? input + ' ' : '';
+    rec.onresult = (e: any) => {
+      let transcript = '';
+      for (let i = 0; i < e.results.length; i++) transcript += e.results[i][0].transcript;
+      setInput(voiceBaseRef.current + transcript);
+    };
+    rec.onend = () => { setListening(false); recognitionRef.current = null; };
+    rec.onerror = () => { setListening(false); recognitionRef.current = null; };
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
+  };
+
   const ask = async (text?: string) => {
     const q = (text ?? input).trim();
     if (!q || loading || !role) return;
+    recognitionRef.current?.stop(); // 发送时若正在录音，先停掉
     setInput('');
     setLoading(true);
     const userMsg: Message = { id: `u${Date.now()}`, role: 'user', content: q };
@@ -274,8 +312,15 @@ export default function App() {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
                       }}
-                      placeholder="输入问题，Enter 发送…"
+                      placeholder={listening ? '正在聆听，请说话…' : '输入问题，Enter 发送…'}
                     />
+                    <button
+                      className={`mic-btn ${listening ? 'listening' : ''}`}
+                      onClick={toggleVoice}
+                      title={listening ? '停止录音' : '语音输入'}
+                    >
+                      {listening ? '■' : '🎙'}
+                    </button>
                     <button
                       className="send-btn"
                       disabled={loading || !input.trim()}
