@@ -4,9 +4,11 @@ import CourseCard, { type CourseCardData } from '@/components/CourseCard';
 import FreeRoomCard, { type FreeRoomCardData } from '@/components/FreeRoomCard';
 import LeaveFormCard from '@/components/LeaveFormCard';
 import type { LeaveFormData } from '@/lib/leaveForm';
+import ApprovalsCard, { type ApprovalsData } from '@/components/ApprovalsCard';
+import LoginView, { type RoleKey } from '@/components/LoginView';
 import ThinkingSteps, { type ToolCallInfo } from '@/components/ThinkingSteps';
 import CitationDrawer, { type Citation } from '@/components/CitationDrawer';
-import Rail, { NAV_TITLES, QUICK_PROMPTS, type NavKey } from '@/components/Rail';
+import Rail, { NAV_TITLES, QUICK_PROMPTS, COUNSELOR_QUICK_PROMPTS, type NavKey } from '@/components/Rail';
 import Board from '@/components/Board';
 import AboutView from '@/components/AboutView';
 import './App.css';
@@ -16,12 +18,16 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   toolCalls?: ToolCallInfo[];
-  cards?: { cardType: string; data: CourseCardData | FreeRoomCardData | LeaveFormData }[];
+  cards?: { cardType: string; data: CourseCardData | FreeRoomCardData | LeaveFormData | ApprovalsData }[];
   citations?: Citation[];
   safety?: string;
 }
 
 export default function App() {
+  // 登录角色：null = 未登录（显示登录页）；选择后持久化到 localStorage
+  const [role, setRole] = useState<RoleKey | null>(
+    () => (localStorage.getItem('cbw-role') as RoleKey | null) ?? null
+  );
   const [nav, setNav] = useState<NavKey>('assistant');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -87,9 +93,23 @@ export default function App() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
+  // 选择 / 切换角色：清空对话，重新进入
+  const selectRole = (r: RoleKey) => {
+    localStorage.setItem('cbw-role', r);
+    setRole(r);
+    setMessages([]);
+    setNav('assistant');
+  };
+  const switchRole = () => {
+    localStorage.removeItem('cbw-role');
+    setRole(null);
+    setMessages([]);
+    setNav('assistant');
+  };
+
   const ask = async (text?: string) => {
     const q = (text ?? input).trim();
-    if (!q || loading) return;
+    if (!q || loading || !role) return;
     setInput('');
     setLoading(true);
     const userMsg: Message = { id: `u${Date.now()}`, role: 'user', content: q };
@@ -100,7 +120,7 @@ export default function App() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, role }),
       });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
@@ -156,7 +176,7 @@ export default function App() {
     setLoading(false);
   };
 
-  const chips = QUICK_PROMPTS[nav] ?? [];
+  const chips = (role === 'counselor' ? COUNSELOR_QUICK_PROMPTS[nav] : QUICK_PROMPTS[nav]) ?? [];
   const showChat = nav !== 'about';
   const lastId = messages.length ? messages[messages.length - 1].id : '';
 
@@ -166,8 +186,11 @@ export default function App() {
       <div ref={lampGlowRef} className="bg-lampglow" />
       <div ref={coolGlowRef} className="bg-coolglow" />
 
+      {!role ? (
+        <LoginView onSelect={selectRole} />
+      ) : (
       <div className="shell">
-        <Rail active={nav} onChange={setNav} />
+        <Rail active={nav} onChange={setNav} role={role} onSwitchRole={switchRole} />
 
         <main className="panel">
           {showChat ? (
@@ -208,6 +231,8 @@ export default function App() {
                           <FreeRoomCard key={i} data={c.data as FreeRoomCardData} />
                         ) : c.cardType === 'leave_form' ? (
                           <LeaveFormCard key={i} data={c.data as LeaveFormData} />
+                        ) : c.cardType === 'approvals' ? (
+                          <ApprovalsCard key={i} data={c.data as ApprovalsData} />
                         ) : null
                       )}
                       {m.safety && <div className="safety-tag">🛡 安全护栏已触发（{m.safety}）</div>}
@@ -269,8 +294,9 @@ export default function App() {
           )}
         </main>
 
-        <Board />
+        <Board role={role} />
       </div>
+      )}
 
       <CitationDrawer
         open={drawer !== null}

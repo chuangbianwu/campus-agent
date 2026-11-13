@@ -50,10 +50,10 @@ function campusApi(): Plugin {
           res.setHeader('Connection', 'keep-alive');
 
           try {
-            const { messages } = JSON.parse(body || '{}');
+            const { messages, role } = JSON.parse(body || '{}');
             await runAgentChat(messages, (event) => {
               res.write(`data: ${JSON.stringify(event)}\n\n`);
-            }, apiKey);
+            }, apiKey, role === 'counselor' ? 'counselor' : 'student');
           } catch (error) {
             console.error('API 调用失败:', error);
             res.write(`data: ${JSON.stringify({

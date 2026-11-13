@@ -35,7 +35,7 @@ app.use(express.json());
  *   data: [DONE]
  */
 app.post('/api/chat', async (req, res) => {
-  const { messages } = req.body;
+  const { messages, role } = req.body;
 
   // 检查 API Key 是否配置
   const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -52,7 +52,7 @@ app.post('/api/chat', async (req, res) => {
   try {
     await runAgentChat(messages, (event) => {
       res.write(`data: ${JSON.stringify(event)}\n\n`);
-    }, apiKey);
+    }, apiKey, role === 'counselor' ? 'counselor' : 'student');
   } catch (error) {
     console.error('API 调用失败:', error);
     res.write(`data: ${JSON.stringify({

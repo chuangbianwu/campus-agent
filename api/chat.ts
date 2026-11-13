@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { messages } = req.body || {};
+  const { messages, role } = req.body || {};
   if (!Array.isArray(messages)) {
     res.status(400).json({ error: '请求格式错误：messages 必须是数组' });
     return;
@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await runAgentChat(messages, (event) => {
       res.write(`data: ${JSON.stringify(event)}\n\n`);
-    }, apiKey);
+    }, apiKey, role === 'counselor' ? 'counselor' : 'student');
   } catch (error) {
     console.error('API 调用失败:', error);
     res.write(`data: ${JSON.stringify({

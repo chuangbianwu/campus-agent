@@ -8,6 +8,8 @@
  *   关于作品   → 项目介绍 + 技术亮点
  */
 
+import { ROLE_INFO, type RoleKey } from './LoginView';
+
 export type NavKey = 'assistant' | 'schedule' | 'knowledge' | 'about';
 
 const NAV_ITEMS: Array<{ key: NavKey; label: string; count?: number }> = [
@@ -17,11 +19,19 @@ const NAV_ITEMS: Array<{ key: NavKey; label: string; count?: number }> = [
   { key: 'about', label: '关于作品' },
 ];
 
-/** 每个栏目对应的快捷提示词 */
+/** 每个栏目对应的快捷提示词（学生角色） */
 export const QUICK_PROMPTS: Record<NavKey, string[]> = {
   assistant: ['明天下午没课的话，去哪自习？', '我周二有什么课？', '请假需要什么流程？', '奖学金怎么评？'],
   schedule: ['今天有课吗？', '明天有什么课？', '周五下午有课吗？', '没课时去哪自习？'],
   knowledge: ['怎么请假？', '借书逾期怎么收费？', '奖学金加分项有哪些？', '宿舍晚上几点关门？'],
+  about: [],
+};
+
+/** 辅导员角色的快捷提示词（审批是核心场景） */
+export const COUNSELOR_QUICK_PROMPTS: Record<NavKey, string[]> = {
+  assistant: ['有哪些请假待审批？', '请假审批权限是怎么规定的？', '张三周五下午有课吗？'],
+  schedule: ['张三今天有课吗？', '张三周五下午有课吗？', '周三有哪些课？'],
+  knowledge: ['请假超过 7 天找谁批？', '奖学金怎么评？', '宿舍晚上几点关门？'],
   about: [],
 };
 
@@ -33,7 +43,18 @@ export const NAV_TITLES: Record<NavKey, { title: string; note: string }> = {
   about: { title: '关于作品', note: '' },
 };
 
-function Rail({ active, onChange }: { active: NavKey; onChange: (k: NavKey) => void }) {
+function Rail({
+  active,
+  onChange,
+  role,
+  onSwitchRole,
+}: {
+  active: NavKey;
+  onChange: (k: NavKey) => void;
+  role: RoleKey;
+  onSwitchRole: () => void;
+}) {
+  const me = ROLE_INFO[role];
   return (
     <aside className="panel rail">
       <div className="brand">
@@ -42,6 +63,15 @@ function Rail({ active, onChange }: { active: NavKey; onChange: (k: NavKey) => v
           <div className="brand-name">校园百事通</div>
           <div className="brand-sub">智能办事助手</div>
         </div>
+      </div>
+
+      <div className="role-box">
+        <div className={`role-avatar ${role}`}>{me.name[0]}</div>
+        <div className="role-meta">
+          <div className="role-name">{me.name}</div>
+          <div className="role-title">{me.title}</div>
+        </div>
+        <button className="role-switch" onClick={onSwitchRole} title="切换身份">⇄</button>
       </div>
 
       <nav className="nav">

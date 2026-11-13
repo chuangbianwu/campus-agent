@@ -8,13 +8,17 @@
 
 import coursesDataJson from '../../server/data/courses.json';
 import policiesDataJson from '../../server/data/policies.json';
+import leaveRequestsJson from '../../server/data/leave_requests.json';
 import type { Course } from './CourseCard';
+import type { RoleKey } from './LoginView';
 
 const coursesData = coursesDataJson as {
   schedule: Record<string, Course[]>;
 };
 
 const policies = policiesDataJson as Array<{ content: string }>;
+
+const pendingCount = (leaveRequestsJson as { requests: unknown[] }).requests.length;
 
 /** 制度文档按小节切片的数量（与 server/rag 逻辑一致） */
 function countChunks() {
@@ -34,7 +38,7 @@ function getToday() {
   };
 }
 
-function Board() {
+function Board({ role }: { role: RoleKey }) {
   const today = getToday();
   const chunkCount = countChunks();
 
@@ -43,15 +47,19 @@ function Board() {
       <div>
         <div className="board-title">概览</div>
         <div className="stat-grid">
-          <div className="stat"><div className="stat-num lit">{today.courses.length}</div><div className="stat-label">今日课程</div></div>
+          {role === 'counselor' ? (
+            <div className="stat"><div className="stat-num lit">{pendingCount}</div><div className="stat-label">待审批请假</div></div>
+          ) : (
+            <div className="stat"><div className="stat-num lit">{today.courses.length}</div><div className="stat-label">今日课程</div></div>
+          )}
           <div className="stat"><div className="stat-num">{chunkCount}</div><div className="stat-label">知识库切片</div></div>
-          <div className="stat"><div className="stat-num">3</div><div className="stat-label">Agent 工具</div></div>
+          <div className="stat"><div className="stat-num">{role === 'counselor' ? 4 : 3}</div><div className="stat-label">Agent 工具</div></div>
           <div className="stat"><div className="stat-num">{policies.length}</div><div className="stat-label">制度文档</div></div>
         </div>
       </div>
 
       <div>
-        <div className="board-title">{today.label}</div>
+        <div className="board-title">{role === 'counselor' ? `张三 · ${today.label}` : today.label}</div>
         {today.courses.map((c, i) => (
           <div key={i} className="today-row">
             <span className="today-time">{c.time}</span>

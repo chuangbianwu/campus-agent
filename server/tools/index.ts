@@ -17,6 +17,7 @@ import { searchPolicies } from '../rag/index';
 // 不存在"线上找不到文件"的问题；本地开发两种环境（tsx / Vite）也都支持
 import coursesDataJson from '../data/courses.json';
 import freeRoomsDataJson from '../data/free_rooms.json';
+import leaveRequestsJson from '../data/leave_requests.json';
 
 // 制度文档不再整篇加载到工具里，改由 server/rag 模块切片建索引后按需检索
 
@@ -38,6 +39,9 @@ const coursesData = coursesDataJson as {
 
 // ========== 类型定义 ==========
 
+/** 用户角色：学生 / 辅导员（登录页选择，随请求体传给后端） */
+export type Role = 'student' | 'counselor';
+
 /** 工具执行结果 */
 export interface ToolResult {
   /** 给大模型看的数据（JSON 字符串会放进对话历史） */
@@ -50,7 +54,7 @@ export interface ToolResult {
    * 数据准确、样式统一，还不会浪费 token 让大模型画表格
    */
   card?: {
-    type: 'courses' | 'free_rooms' | 'leave_form'; // 卡片类型，前端按类型选组件（以后可扩展 policies 等）
+    type: 'courses' | 'free_rooms' | 'leave_form' | 'approvals'; // 卡片类型，前端按类型选组件
     data: unknown;
   };
   /**
@@ -305,26 +309,78 @@ const freeRoomsTool: Tool = {
   },
 };
 
+// ========== 工具 4：待审批请假列表（辅导员专属） ==========
+
+interface LeaveRequest {
+  id: string;
+  student: string;
+  className: string;
+  type: string;
+  days: number;
+  range: string;
+  reason: string;
+  submitted: string;
+}
+const leaveRequests = (leaveRequestsJson as { requests: LeaveRequest[] }).requests;
+
+const leaveApprovalsTool: Tool = {
+  label: '请假审批查询',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'query_leave_approvals',
+      description: '查询待审批的学生请假申请列表（仅辅导员可用），返回申请人、班级、假型、天数、事由',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  execute: () => {
+    return {
+      data: JSON.stringify({ count: leaveRequests.length, requests: leaveRequests }),
+      summary: `查询到 ${leaveRequests.length} 条待审批请假申请`,
+      card: { type: 'approvals', data: { requests: leaveRequests } },
+    };
+  },
+};
+
 // ========== 注册表：所有工具的入口 ==========
 
-export const tools: Tool[] = [courseScheduleTool, campusPolicyTool, freeRoomsTool];
+export const tools: Tool[] = [courseScheduleTool, campusPolicyTool, freeRoomsTool, leaveApprovalsTool];
 
-/** 给大模型的工具定义列表（只要 definition 部分） */
-export function getToolDefinitions() {
-  return tools.map((t) => t.definition);
+/**
+ * 给大模型的工具定义列表（按角色过滤）
+ * 学生角色看不到审批工具——大模型连"调用它"的选项都没有，
+ * 这是第一道权限防线（提示词层）
+ */
+export function getToolDefinitions(role: Role = 'student') {
+  return tools
+    .filter((t) => role === 'counselor' || t.definition.function.name !== 'query_leave_approvals')
+    .map((t) => t.definition);
 }
 
 /**
  * 按名字找到工具并执行
  * 找不到时返回错误信息，不让程序崩掉（错误兜底，评分点之一）
+ * 角色权限在这里做第二道防线（执行层）：即使提示词被绕过，
+ * 学生角色执行审批工具也会被直接拦截
  */
-export function executeTool(name: string, args: Record<string, unknown>): ToolResult & { label: string } {
+export function executeTool(name: string, args: Record<string, unknown>, role: Role = 'student'): ToolResult & { label: string } {
   const tool = tools.find((t) => t.definition.function.name === name);
   if (!tool) {
     return {
       label: name,
       data: JSON.stringify({ error: `工具 ${name} 不存在` }),
       summary: `工具 ${name} 不存在`,
+    };
+  }
+  if (name === 'query_leave_approvals' && role !== 'counselor') {
+    return {
+      label: tool.label,
+      data: JSON.stringify({ error: '权限不足：请假审批查询仅辅导员可用' }),
+      summary: '权限不足，已拦截',
     };
   }
   try {

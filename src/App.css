@@ -464,6 +464,127 @@ textarea.chat-input { resize: none; max-height: 120px; }
 .about-card-desc { font-size: 12px; color: var(--dim); line-height: 1.7; }
 .about-card-dim { font-size: 11px; color: var(--lamp); margin-top: 8px; }
 
+/* ---------- 登录页 ---------- */
+.login {
+  position: relative; z-index: 2;
+  height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, "Segoe UI", sans-serif;
+}
+.login-inner {
+  display: flex; flex-direction: column; align-items: center;
+  max-width: 640px; padding: 24px;
+  opacity: 0; animation: rise 0.6s var(--ease-out) forwards;
+}
+.login-title { font-size: 24px; font-weight: 700; margin-top: 14px; }
+.login-sub { font-size: 13px; color: var(--dim); margin-top: 6px; }
+.login-cards { display: flex; gap: 14px; margin-top: 28px; }
+.login-card {
+  width: 240px; text-align: left; cursor: pointer;
+  background: var(--panel);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: 20px; color: var(--paper); font-family: inherit;
+  display: flex; flex-direction: column; gap: 4px;
+  transition: border-color 0.25s, transform 0.25s var(--ease-out), box-shadow 0.25s;
+}
+.login-card:hover {
+  border-color: var(--lamp-line);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(242, 169, 59, 0.08);
+}
+.login-card:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.login-card-avatar {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--lamp); color: #1A1206;
+  font-size: 18px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 8px;
+}
+.login-card:last-child .login-card-avatar { background: var(--ok); color: #06281A; }
+.login-card-name { font-size: 16px; font-weight: 700; }
+.login-card-title { font-size: 12px; color: var(--dim); }
+.login-card-desc { font-size: 12px; color: var(--dim); line-height: 1.7; margin-top: 6px; min-height: 40px; }
+.login-card-enter { font-size: 12px; color: var(--lamp); margin-top: 8px; }
+.login-note { font-size: 11px; color: var(--dim); margin-top: 26px; }
+
+/* ---------- 角色盒（导航栏顶部） ---------- */
+.role-box {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+.role-avatar {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  background: var(--lamp); color: #1A1206;
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.role-avatar.counselor { background: var(--ok); color: #06281A; }
+.role-meta { flex: 1; min-width: 0; }
+.role-name { font-size: 12.5px; font-weight: 700; }
+.role-title { font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.role-switch {
+  border: 1px solid var(--hairline); background: none; cursor: pointer;
+  color: var(--dim); border-radius: 7px; width: 24px; height: 24px;
+  font-size: 12px; flex-shrink: 0;
+  transition: color 0.2s, border-color 0.2s;
+}
+.role-switch:hover { color: var(--lamp); border-color: var(--lamp-line); }
+
+/* ---------- 待审批卡片（辅导员专属） ---------- */
+.appr-card {
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: rgba(233, 237, 247, 0.03);
+  min-width: 340px; max-width: 480px;
+}
+.appr-card-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px; font-weight: 700;
+}
+.appr-card-count { font-size: 11.5px; color: var(--lamp); font-weight: 400; }
+.appr-card-body { display: flex; flex-direction: column; }
+.appr-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  transition: opacity 0.3s;
+}
+.appr-item + .appr-item { border-top: 1px dashed var(--hairline); }
+.appr-item.done { opacity: 0.45; }
+.appr-main { flex: 1; min-width: 0; }
+.appr-name-row { display: flex; align-items: center; gap: 8px; }
+.appr-name { font-size: 13.5px; font-weight: 600; }
+.appr-class { font-size: 11px; color: var(--dim); }
+.appr-type {
+  font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--hairline-strong); color: var(--dim);
+}
+.appr-type.sick { color: var(--warn); border-color: rgba(229, 93, 93, 0.35); }
+.appr-reason { font-size: 12px; margin-top: 3px; }
+.appr-meta { font-size: 11px; color: var(--dim); margin-top: 2px; }
+.appr-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.appr-btn {
+  border-radius: 7px; cursor: pointer; font-family: inherit;
+  font-size: 11.5px; font-weight: 600; padding: 5px 12px;
+  border: 1px solid transparent;
+  transition: transform 0.15s var(--ease-out), background 0.2s;
+}
+.appr-btn:active { transform: scale(0.94); }
+.appr-btn.ok { background: var(--ok); color: #06281A; border: none; }
+.appr-btn.ok:hover { filter: brightness(1.1); }
+.appr-btn.no { background: none; color: var(--warn); border-color: rgba(229, 93, 93, 0.4); }
+.appr-btn.no:hover { background: rgba(229, 93, 93, 0.1); }
+.appr-result { font-size: 11.5px; flex-shrink: 0; }
+.appr-result.approved { color: var(--ok); }
+.appr-result.rejected { color: var(--warn); }
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 1100px) {
   .shell { grid-template-columns: 224px 1fr; }
