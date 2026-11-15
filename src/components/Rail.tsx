@@ -9,13 +9,20 @@
  */
 
 import { ROLE_INFO, type RoleKey } from './LoginView';
+import policiesDataJson from '../../server/data/policies.json';
 
 export type NavKey = 'assistant' | 'schedule' | 'knowledge' | 'about';
+
+/** 知识库切片数（与 server/rag 切分逻辑一致，实时计算不硬编码） */
+const CHUNK_COUNT = (policiesDataJson as Array<{ content: string }>).reduce(
+  (sum, p) => sum + p.content.split(/(?=\n[一二三四五六七八九十]+、)/).filter((s) => s.trim()).length,
+  0
+);
 
 const NAV_ITEMS: Array<{ key: NavKey; label: string; count?: number }> = [
   { key: 'assistant', label: '智能助手' },
   { key: 'schedule', label: '课表查询' },
-  { key: 'knowledge', label: '制度知识库', count: 19 },
+  { key: 'knowledge', label: '制度知识库', count: CHUNK_COUNT },
   { key: 'about', label: '关于作品' },
 ];
 
@@ -23,7 +30,7 @@ const NAV_ITEMS: Array<{ key: NavKey; label: string; count?: number }> = [
 export const QUICK_PROMPTS: Record<NavKey, string[]> = {
   assistant: ['明天下午没课的话，去哪自习？', '我周二有什么课？', '请假需要什么流程？', '奖学金怎么评？'],
   schedule: ['今天有课吗？', '明天有什么课？', '周五下午有课吗？', '没课时去哪自习？'],
-  knowledge: ['怎么请假？', '借书逾期怎么收费？', '奖学金加分项有哪些？', '宿舍晚上几点关门？'],
+  knowledge: ['怎么请假？', '学费怎么交？', '奖学金加分项有哪些？', '宿舍晚上几点关门？'],
   about: [],
 };
 
