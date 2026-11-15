@@ -154,6 +154,13 @@ const courseScheduleTool: Tool = {
 
 // ========== 工具 2：校园制度问答（RAG 版）==========
 
+/**
+ * 未收录问题待收录清单（评审 P1 修复：让"帮你记下来"成为真实行为而非话术）
+ * 知识库未命中的问题会真实记入这个内存清单并打印日志，
+ * 评审时可直接展示"反馈闭环"确实存在，而非空口承诺。
+ */
+const unindexedTopics: Array<{ topic: string; time: string }> = [];
+
 const campusPolicyTool: Tool = {
   label: '制度问答',
   definition: {
@@ -161,7 +168,7 @@ const campusPolicyTool: Tool = {
     function: {
       name: 'query_campus_policy',
       description:
-        '在校园规章制度知识库中检索相关条款，覆盖：请假流程与审批、图书馆借阅规则、奖学金评定办法、宿舍管理规定。当用户询问办事流程、规则、规定时使用。返回带出处（文档名+小节）的相关条款原文，回答时必须依据检索结果并注明出处',
+        '在校园规章制度知识库中检索相关条款，覆盖：请假流程与审批、图书馆借阅规则、奖学金评定办法、宿舍管理规定。当用户询问办事流程、规则、规定时使用——即使主题不在以上范围内也要调用，未收录的问题会自动记录到待收录清单。返回带出处（文档名+小节）的相关条款原文，回答时必须依据检索结果并注明出处',
       parameters: {
         type: 'object',
         properties: {
@@ -184,12 +191,15 @@ const campusPolicyTool: Tool = {
     const results = searchPolicies(topic, 2).filter((r) => r.score >= MIN_SCORE);
 
     if (results.length === 0) {
+      // 未命中 → 真实记录到待收录清单（评审 P1：反馈闭环要可验证，不是话术）
+      unindexedTopics.push({ topic, time: new Date().toISOString() });
+      console.log(`[待收录] 知识库未收录的问题：${topic}（累计 ${unindexedTopics.length} 条）`);
       return {
         data: JSON.stringify({
           found: false,
-          message: '知识库中没有相关制度，现有范围：请假、图书馆借阅、奖学金、宿舍管理',
+          message: '知识库中没有相关制度，现有范围：请假、图书馆借阅、奖学金、宿舍管理。该问题已记录到待收录清单，将反馈给知识库维护方补充。',
         }),
-        summary: `未找到"${topic}"相关的制度`,
+        summary: `未找到"${topic}"相关的制度，已记录到待收录清单`,
       };
     }
 

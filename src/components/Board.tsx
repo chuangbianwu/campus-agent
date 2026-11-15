@@ -50,7 +50,7 @@ function Board({ role }: { role: RoleKey }) {
           {role === 'counselor' ? (
             <div className="stat"><div className="stat-num lit">{pendingCount}</div><div className="stat-label">待审批请假</div></div>
           ) : (
-            <div className="stat"><div className="stat-num lit">{today.courses.length}</div><div className="stat-label">今日课程</div></div>
+            <div className="stat"><div className="stat-num lit">{today.courses.length}</div><div className="stat-label">{today.label}</div></div>
           )}
           <div className="stat"><div className="stat-num">{chunkCount}</div><div className="stat-label">知识库切片</div></div>
           <div className="stat"><div className="stat-num">{role === 'counselor' ? 4 : 3}</div><div className="stat-label">Agent 工具</div></div>

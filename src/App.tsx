@@ -264,13 +264,18 @@ export default function App() {
                           streaming={loading && m.id === lastId}
                         />
                       )}
-                      {/* 等待首个响应期间的骨架屏（消除等待空白） */}
+                      {/* 等待首个响应期间的骨架屏（消除等待空白，附状态文案） */}
                       {m.role === 'assistant' && loading && m.id === lastId && !m.content && (m.toolCalls?.length ?? 0) === 0 && (
                         <div className="bubble skeleton">
+                          <span className="sk-status">正在分析意图…</span>
                           <span className="sk-bar" />
                           <span className="sk-bar" />
                           <span className="sk-bar short" />
                         </div>
+                      )}
+                      {/* 工具执行完毕、最终回答开始流式输出前的衔接状态 */}
+                      {m.role === 'assistant' && loading && m.id === lastId && !m.content && (m.toolCalls?.length ?? 0) > 0 && (
+                        <div className="thinking-status">数据加载完毕，正在组织回答…</div>
                       )}
                       {m.content && (
                         <div className="bubble">
@@ -292,11 +297,11 @@ export default function App() {
                           <ApprovalsCard
                             key={i}
                             data={c.data as ApprovalsData}
-                            onDecide={(r, d) =>
+                            onDecide={(r, d, reason) =>
                               appendReceipt(
                                 d === 'approved'
                                   ? `✓ 已批准 ${r.student} 的请假申请（${r.type} · ${r.days} 天，${r.range}）`
-                                  : `✗ 已驳回 ${r.student} 的请假申请（${r.type} · ${r.days} 天，${r.range}）`
+                                  : `✗ 已驳回 ${r.student} 的请假申请（${r.type} · ${r.days} 天，${r.range}）${reason ? `，理由：${reason}` : ''}`
                               )
                             }
                           />
