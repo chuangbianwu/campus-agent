@@ -208,6 +208,11 @@ export async function runAgentChat(
       // 在本地真正执行这个工具（带上角色：执行层权限拦截）
       const toolResult = executeTool(toolName, toolArgs, role);
 
+      // 越权调用被拦截 → 发 safety 事件，让"权限拦截"在前端可见（评审 P0 修复）
+      if (toolResult.denied) {
+        sendEvent({ type: 'safety', rule: '越权调用已拦截' });
+      }
+
       // 通知前端：工具执行完毕，附上摘要
       sendEvent({
         type: 'tool_result',

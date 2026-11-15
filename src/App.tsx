@@ -144,8 +144,15 @@ export default function App() {
     rec.start();
   };
 
-  const ask = async (text?: string) => {
-    const q = (text ?? input).trim();
+  /** 办理回执：审批/下载完成后，在对话流追加一条可追踪的系统消息 */
+  const appendReceipt = (content: string) => {
+    setMessages((msgs) => [
+      ...msgs,
+      { id: `r${Date.now()}`, role: 'assistant', content },
+    ]);
+  };
+
+  const ask = async (text?: string) => {    const q = (text ?? input).trim();
     if (!q || loading || !role) return;
     recognitionRef.current?.stop(); // 发送时若正在录音，先停掉
     setInput('');
@@ -257,6 +264,14 @@ export default function App() {
                           streaming={loading && m.id === lastId}
                         />
                       )}
+                      {/* 等待首个响应期间的骨架屏（消除等待空白） */}
+                      {m.role === 'assistant' && loading && m.id === lastId && !m.content && (m.toolCalls?.length ?? 0) === 0 && (
+                        <div className="bubble skeleton">
+                          <span className="sk-bar" />
+                          <span className="sk-bar" />
+                          <span className="sk-bar short" />
+                        </div>
+                      )}
                       {m.content && (
                         <div className="bubble">
                           <ReactMarkdown>{m.content}</ReactMarkdown>
@@ -268,9 +283,23 @@ export default function App() {
                         ) : c.cardType === 'free_rooms' ? (
                           <FreeRoomCard key={i} data={c.data as FreeRoomCardData} />
                         ) : c.cardType === 'leave_form' ? (
-                          <LeaveFormCard key={i} data={c.data as LeaveFormData} />
+                          <LeaveFormCard
+                            key={i}
+                            data={c.data as LeaveFormData}
+                            onDownloaded={(f) => appendReceipt(`📄 请假申请表已生成并下载：${f}（预填姓名/专业/制度依据）`)}
+                          />
                         ) : c.cardType === 'approvals' ? (
-                          <ApprovalsCard key={i} data={c.data as ApprovalsData} />
+                          <ApprovalsCard
+                            key={i}
+                            data={c.data as ApprovalsData}
+                            onDecide={(r, d) =>
+                              appendReceipt(
+                                d === 'approved'
+                                  ? `✓ 已批准 ${r.student} 的请假申请（${r.type} · ${r.days} 天，${r.range}）`
+                                  : `✗ 已驳回 ${r.student} 的请假申请（${r.type} · ${r.days} 天，${r.range}）`
+                              )
+                            }
+                          />
                         ) : null
                       )}
                       {m.safety && <div className="safety-tag">🛡 安全护栏已触发（{m.safety}）</div>}

@@ -90,9 +90,11 @@ export async function downloadLeaveForm(data: LeaveFormData) {
 
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
+  const fileName = `请假申请表-${data.student}-${today.replaceAll('/', '-')}.docx`;
   const a = document.createElement('a');
   a.href = url;
-  a.download = `请假申请表-${data.student}-${today.replaceAll('/', '-')}.docx`;
+  a.download = fileName;
   a.click();
   URL.revokeObjectURL(url);
+  return fileName;
 }

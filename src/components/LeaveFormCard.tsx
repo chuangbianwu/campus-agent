@@ -9,15 +9,23 @@
 import { useState } from 'react';
 import { downloadLeaveForm, type LeaveFormData } from '@/lib/leaveForm';
 
-function LeaveFormCard({ data }: { data: LeaveFormData }) {
+function LeaveFormCard({
+  data,
+  onDownloaded,
+}: {
+  data: LeaveFormData;
+  onDownloaded?: (fileName: string) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
   const onDownload = async () => {
     setBusy(true);
     try {
-      await downloadLeaveForm(data);
+      const fileName = await downloadLeaveForm(data);
       setDone(true);
+      // 回执：下载完成后在对话里留一条可追踪记录（办理-回执-追踪闭环）
+      onDownloaded?.(fileName);
       setTimeout(() => setDone(false), 3000);
     } finally {
       setBusy(false);

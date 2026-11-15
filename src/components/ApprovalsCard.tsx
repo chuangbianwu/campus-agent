@@ -23,52 +23,52 @@ export interface ApprovalsData {
   requests: LeaveRequestItem[];
 }
 
-function ApprovalsCard({ data }: { data: ApprovalsData }) {
+function ApprovalsCard({
+  data,
+  onDecide,
+}: {
+  data: ApprovalsData;
+  onDecide?: (r: LeaveRequestItem, d: 'approved' | 'rejected') => void;
+}) {
   // 本地审批状态：id → 'approved' | 'rejected'
   const [decisions, setDecisions] = useState<Record<string, 'approved' | 'rejected'>>({});
+  // 已处理的直接从列表移除（评审 P1：状态回写要可见），只留待处理
   const pending = data.requests.filter((r) => !decisions[r.id]);
+
+  const decide = (r: LeaveRequestItem, d: 'approved' | 'rejected') => {
+    setDecisions((s) => ({ ...s, [r.id]: d }));
+    onDecide?.(r, d); // 通知对话流追加回执消息，形成"办理-回执-追踪"闭环
+  };
 
   return (
     <div className="appr-card">
       <div className="appr-card-header">
         <span>待审批请假申请</span>
-        <span className="appr-card-count">{pending.length} 条待处理</span>
+        <span className="appr-card-count">
+          {pending.length > 0 ? `${pending.length} 条待处理` : '全部处理完毕 ✓'}
+        </span>
       </div>
       <div className="appr-card-body">
-        {data.requests.map((r) => {
-          const d = decisions[r.id];
-          return (
-            <div key={r.id} className={`appr-item ${d ? 'done' : ''}`}>
-              <div className="appr-main">
-                <div className="appr-name-row">
-                  <span className="appr-name">{r.student}</span>
-                  <span className="appr-class">{r.className}</span>
-                  <span className={`appr-type ${r.type === '病假' ? 'sick' : ''}`}>{r.type} · {r.days} 天</span>
-                </div>
-                <div className="appr-reason">{r.reason}</div>
-                <div className="appr-meta">{r.range} · 提交于 {r.submitted}</div>
+        {pending.length === 0 && (
+          <div className="appr-empty">本轮申请已全部处理，回执见对话记录。</div>
+        )}
+        {pending.map((r) => (
+          <div key={r.id} className="appr-item">
+            <div className="appr-main">
+              <div className="appr-name-row">
+                <span className="appr-name">{r.student}</span>
+                <span className="appr-class">{r.className}</span>
+                <span className={`appr-type ${r.type === '病假' ? 'sick' : ''}`}>{r.type} · {r.days} 天</span>
               </div>
-              {d ? (
-                <span className={`appr-result ${d}`}>{d === 'approved' ? '已批准' : '已驳回'}</span>
-              ) : (
-                <div className="appr-actions">
-                  <button
-                    className="appr-btn ok"
-                    onClick={() => setDecisions((s) => ({ ...s, [r.id]: 'approved' }))}
-                  >
-                    批准
-                  </button>
-                  <button
-                    className="appr-btn no"
-                    onClick={() => setDecisions((s) => ({ ...s, [r.id]: 'rejected' }))}
-                  >
-                    驳回
-                  </button>
-                </div>
-              )}
+              <div className="appr-reason">{r.reason}</div>
+              <div className="appr-meta">{r.range} · 提交于 {r.submitted}</div>
             </div>
-          );
-        })}
+            <div className="appr-actions">
+              <button className="appr-btn ok" onClick={() => decide(r, 'approved')}>批准</button>
+              <button className="appr-btn no" onClick={() => decide(r, 'rejected')}>驳回</button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

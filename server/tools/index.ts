@@ -66,6 +66,8 @@ export interface ToolResult {
     section: string; // 小节
     text: string;    // 条款原文
   }>;
+  /** 权限拦截标记：true 时 Agent 会向前端发 safety 事件，让越权拦截可见 */
+  denied?: boolean;
 }
 
 /** 工具对象的结构 */
@@ -85,8 +87,8 @@ export interface Tool {
   };
   /** 工具的中文名，用于界面展示 */
   label: string;
-  /** 真正执行的函数：接收大模型给的参数，返回执行结果 */
-  execute: (args: Record<string, unknown>) => ToolResult;
+  /** 真正执行的函数：接收大模型给的参数和当前登录角色，返回执行结果 */
+  execute: (args: Record<string, unknown>, role: Role) => ToolResult;
 }
 
 // ========== 工具 1：课表查询 ==========
@@ -172,7 +174,7 @@ const campusPolicyTool: Tool = {
       },
     },
   },
-  execute: (args) => {
+  execute: (args, role) => {
     const topic = String(args.topic || '');
 
     // RAG 检索：从切片知识库里找最相关的 2 个条款片段
@@ -209,8 +211,15 @@ const campusPolicyTool: Tool = {
     };
 
     // 命中请假制度 → 附带"请假申请表"卡片，前端可一键生成预填的 .docx（对话即办事）
+    //
+    // 生成式 UI 门控（评审 P0 修复）：卡片出现必须同时满足两个条件——
+    //   ① 角色门控：仅学生角色渲染申请表（辅导员看到学生表单属于角色错位）
+    //   ② 意图门控：问题必须是"办理类"（要请假/问流程/要申请），
+    //      纯咨询类（问权限、问规定）只给条款引用，不弹表单
     const leaveHits = results.filter((r) => r.docTitle.includes('请假'));
-    if (leaveHits.length > 0) {
+    const isHandlingIntent = /(我要|我想|帮我请|流程|申请|办理|步骤|怎么办)/.test(topic)
+      && !/(权限|规定|是指|是什么|哪些)/.test(topic);
+    if (role === 'student' && leaveHits.length > 0 && isHandlingIntent) {
       payload.card = {
         type: 'leave_form',
         data: {
@@ -381,10 +390,11 @@ export function executeTool(name: string, args: Record<string, unknown>, role: R
       label: tool.label,
       data: JSON.stringify({ error: '权限不足：请假审批查询仅辅导员可用' }),
       summary: '权限不足，已拦截',
+      denied: true, // 通知 Agent 发 safety 事件，让拦截在前端可见
     };
   }
   try {
-    const result = tool.execute(args);
+    const result = tool.execute(args, role);
     return { label: tool.label, ...result };
   } catch (error) {
     // 工具执行出错也不能让对话中断，把错误告诉大模型，让它跟用户解释
