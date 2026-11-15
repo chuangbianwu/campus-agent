@@ -42,11 +42,25 @@ const SENSITIVE_KEYWORDS: string[] = [
   '色情', '赌博',
 ];
 
+/**
+ * 违规行为请求特征（正则）
+ * 注意只拦"教人做坏事"的问法，不拦正常求助：
+ *   拦："怎么用违规电器不被发现"、"帮我写骂老师的信"
+ *   放行："宿舍能用吹风机吗"（正常咨询）、"老师骂我怎么办"（求助）
+ */
+const HARMFUL_PATTERNS: RegExp[] = [
+  /不被(发现|察觉|抓到)/,                          // 逃避发现的问法
+  /(绕过|逃避|躲开).{0,4}(检查|管理|监控|审批)/,     // 规避监管
+  /(写|编|生成).{0,10}(骂|侮辱|诋毁)/,              // 代写攻击性内容
+];
+
 const REPLIES = {
   injection:
     '我注意到这个消息里包含试图修改我工作方式的内容，这个我不能执行哦。我是校园办事助手，课表查询、请假流程、制度咨询这些都可以帮你～',
   sensitive:
     '这个话题超出了我作为校园办事助手的服务范围，不方便讨论。如果你有课表、请假、图书馆、奖学金方面的问题，我很乐意帮忙！',
+  harmful:
+    '这个忙我帮不了——违反校规或伤害他人的事我不能提供方法。如果是正常的制度咨询（比如电器使用规定），可以换个问法问我～',
 };
 
 /**
@@ -67,6 +81,13 @@ export function checkInput(text: string): SafetyCheckResult {
   for (const word of SENSITIVE_KEYWORDS) {
     if (normalized.includes(word)) {
       return { safe: false, reply: REPLIES.sensitive, rule: 'sensitive-topic' };
+    }
+  }
+
+  // 第三关：违规行为请求
+  for (const pattern of HARMFUL_PATTERNS) {
+    if (pattern.test(normalized)) {
+      return { safe: false, reply: REPLIES.harmful, rule: 'harmful-behavior' };
     }
   }
 

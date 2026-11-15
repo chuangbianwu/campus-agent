@@ -178,7 +178,10 @@ const campusPolicyTool: Tool = {
     const topic = String(args.topic || '');
 
     // RAG 检索：从切片知识库里找最相关的 2 个条款片段
-    const results = searchPolicies(topic, 2);
+    // 得分门槛：BM25 分低于 4 说明知识库里其实没有相关内容，
+    // 宁可回答"没有"也不硬塞不相关条款（诚实兜底，评测发现的改进点）
+    const MIN_SCORE = 4;
+    const results = searchPolicies(topic, 2).filter((r) => r.score >= MIN_SCORE);
 
     if (results.length === 0) {
       return {
