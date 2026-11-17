@@ -11,6 +11,7 @@ import CitationDrawer, { type Citation } from '@/components/CitationDrawer';
 import Rail, { NAV_TITLES, QUICK_PROMPTS, COUNSELOR_QUICK_PROMPTS, type NavKey } from '@/components/Rail';
 import Board from '@/components/Board';
 import AboutView from '@/components/AboutView';
+import TimetableView from '@/components/TimetableView';
 import './App.css';
 
 interface Message {
@@ -222,7 +223,7 @@ export default function App() {
   };
 
   const chips = (role === 'counselor' ? COUNSELOR_QUICK_PROMPTS[nav] : QUICK_PROMPTS[nav]) ?? [];
-  const showChat = nav !== 'about';
+  const showChat = nav !== 'about' && nav !== 'timetable';
   const lastId = messages.length ? messages[messages.length - 1].id : '';
 
   return (
@@ -368,6 +369,8 @@ export default function App() {
                 <div className="status-line">deepseek-chat · Function Calling · 自实现 BM25 RAG</div>
               </div>
             </>
+          ) : nav === 'timetable' ? (
+            <TimetableView role={role} />
           ) : (
             <AboutView />
           )}

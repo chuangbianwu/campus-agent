@@ -612,6 +612,11 @@ textarea.chat-input { resize: none; max-height: 120px; }
   border: 1px solid var(--hairline-strong); color: var(--dim);
 }
 .appr-type.sick { color: var(--warn); border-color: rgba(229, 93, 93, 0.35); }
+.appr-new {
+  font-size: 10px; padding: 1px 6px; border-radius: 999px;
+  background: var(--lamp); color: #201503; font-weight: 700;
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
 .appr-reason { font-size: 12px; margin-top: 3px; }
 .appr-meta { font-size: 11px; color: var(--dim); margin-top: 2px; }
 .appr-actions { display: flex; gap: 6px; flex-shrink: 0; }
@@ -666,3 +671,89 @@ textarea.chat-input { resize: none; max-height: 120px; }
   .rail { display: none; }
   .msg { max-width: 94%; }
 }
+
+/* ---------- 完整周课表视图（"我的课表"导航页） ---------- */
+.tt-view { padding: 22px 26px; overflow: auto; height: 100%; box-sizing: border-box; }
+.tt-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
+.tt-title { font-size: 18px; font-weight: 700; color: var(--paper); }
+.tt-sub { font-size: 12px; color: var(--dim); margin-top: 4px; }
+.tt-legend { display: flex; gap: 6px; }
+.tt-chip {
+  font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--hairline-strong); color: var(--dim);
+}
+.tt-chip.req { color: var(--lamp); border-color: var(--lamp-line); }
+.tt-chip.ele { color: #8AB4F8; border-color: rgba(138, 180, 248, 0.35); }
+.tt-chip.lab { color: var(--ok); border-color: rgba(62, 207, 142, 0.35); }
+
+.tt-grid {
+  display: grid;
+  grid-template-columns: 88px repeat(5, 1fr);
+  gap: 6px;
+}
+.tt-corner { }
+.tt-dayhead {
+  text-align: center; font-size: 12.5px; font-weight: 600; color: var(--dim);
+  padding: 8px 0; border-bottom: 1px solid var(--hairline);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.tt-dayhead.today { color: var(--lamp); border-bottom-color: var(--lamp-line); }
+.tt-today-dot {
+  font-size: 9.5px; padding: 0 6px; border-radius: 999px;
+  background: var(--lamp-soft); border: 1px solid var(--lamp-line); color: var(--lamp);
+}
+.tt-time {
+  font-size: 11px; color: var(--dim); text-align: right;
+  padding: 10px 8px 0 0; font-variant-numeric: tabular-nums;
+}
+.tt-cell { min-height: 74px; border-radius: var(--r-sm); padding: 2px; }
+.tt-cell.today { background: rgba(242, 169, 59, 0.04); }
+.tt-course {
+  height: 100%; box-sizing: border-box;
+  border-radius: var(--r-sm); padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  border-left: 3px solid var(--lamp);
+  transition: transform 0.18s var(--ease-out), box-shadow 0.18s;
+  cursor: default;
+}
+.tt-course:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); }
+.tt-course.ele { border-left-color: #8AB4F8; }
+.tt-course.lab { border-left-color: var(--ok); }
+.tt-course-name { font-size: 12.5px; font-weight: 600; color: var(--paper); line-height: 1.4; }
+.tt-course-meta { font-size: 10.5px; color: var(--dim); margin-top: 2px; }
+.tt-free { color: var(--hairline-strong); font-size: 12px; text-align: center; padding-top: 26px; }
+
+/* ---------- 备忘录（辅导员看板） ---------- */
+.memo-add { margin-top: 6px; }
+.memo-input {
+  width: 100%; box-sizing: border-box;
+  font-family: inherit; font-size: 12px; color: var(--paper);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline); border-radius: 7px;
+  padding: 7px 10px; outline: none;
+  transition: border-color 0.2s;
+}
+.memo-input:focus { border-color: var(--lamp-line); }
+.memo-empty { font-size: 11px; color: var(--dim); margin-top: 8px; line-height: 1.6; }
+.memo-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--hairline);
+}
+.memo-row:last-child { border-bottom: none; }
+.memo-check {
+  width: 15px; height: 15px; flex-shrink: 0;
+  border-radius: 4px; border: 1px solid var(--hairline-strong);
+  background: none; color: var(--ok); font-size: 10px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.memo-row.done .memo-check { border-color: var(--ok); }
+.memo-text { flex: 1; font-size: 12px; color: var(--paper); line-height: 1.5; }
+.memo-row.done .memo-text { color: var(--dim); text-decoration: line-through; }
+.memo-del {
+  background: none; border: none; color: var(--dim);
+  font-size: 13px; cursor: pointer; padding: 0 2px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.memo-row:hover .memo-del { opacity: 1; }
+.memo-del:hover { color: var(--warn); }

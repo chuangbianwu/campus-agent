@@ -4,6 +4,16 @@ import { defineConfig, type Plugin } from "vite"
 import { inspectAttr } from 'kimi-plugin-inspect-react'
 import dotenv from 'dotenv'
 import { runAgentChat } from './server/agent'
+import { submitLeaveRequest, decideRequest, pendingCount } from './server/store'
+
+/** 手动读取请求体（vite 中间件没有 Express 的 json 解析） */
+function readBody(req: import('http').IncomingMessage): Promise<string> {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', () => resolve(body));
+  });
+}
 
 // 加载 .env（DeepSeek API Key 只待在服务器侧，前端永远看不到）
 dotenv.config()
@@ -33,9 +43,7 @@ function campusApi(): Plugin {
         }
 
         // 手动读取请求体（这里没有 Express 的 json 中间件）
-        let body = '';
-        req.on('data', (chunk) => (body += chunk));
-        req.on('end', async () => {
+        readBody(req).then(async (body) => {
           const apiKey = process.env.DEEPSEEK_API_KEY;
           if (!apiKey || apiKey === 'your_deepseek_api_key_here') {
             res.statusCode = 500;
@@ -64,6 +72,56 @@ function campusApi(): Plugin {
 
           res.write('data: [DONE]\n\n');
           res.end();
+        });
+      });
+
+      /**
+       * 请假互通接口（学生提交 → 辅导员审批 → 学生查结果，共享内存存储）
+       *   POST /api/leave        学生提交请假申请
+       *   POST /api/leave/decide 辅导员批准/驳回（持久化，学生端可查）
+       *   GET  /api/leave        待审批数量（教师端看板徽标）
+       */
+      server.middlewares.use('/api/leave/decide', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; res.end('Method Not Allowed'); return; }
+        readBody(req).then((body) => {
+          res.setHeader('Content-Type', 'application/json');
+          try {
+            const { id, decision, reason } = JSON.parse(body || '{}');
+            const updated = decideRequest(String(id), decision, reason ? String(reason) : undefined);
+            if (!updated) {
+              res.statusCode = 404;
+              res.end(JSON.stringify({ error: '申请不存在或已处理' }));
+              return;
+            }
+            res.end(JSON.stringify({ ok: true, request: updated, pending: pendingCount() }));
+          } catch {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: '请求格式错误' }));
+          }
+        });
+      });
+
+      server.middlewares.use('/api/leave', (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        if (req.method === 'GET') {
+          res.end(JSON.stringify({ pending: pendingCount() }));
+          return;
+        }
+        if (req.method !== 'POST') { res.statusCode = 405; res.end('Method Not Allowed'); return; }
+        readBody(req).then((body) => {
+          try {
+            const { type, days, range, reason } = JSON.parse(body || '{}');
+            if (!type || !days || !range || !reason) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: '缺少必填字段：type/days/range/reason' }));
+              return;
+            }
+            const created = submitLeaveRequest({ type: String(type), days: Number(days), range: String(range), reason: String(reason) });
+            res.end(JSON.stringify({ ok: true, request: created }));
+          } catch {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: '请求格式错误' }));
+          }
         });
       });
     },

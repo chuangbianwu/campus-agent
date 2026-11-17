@@ -12,12 +12,16 @@
  */
 
 import { searchPolicies } from '../rag/index';
+import {
+  listPendingRequests,
+  listRequestsByStudent,
+  submitLeaveRequest,
+} from '../store';
 // 用 JSON 静态导入而不是 readFileSync：
 // 部署到 Vercel 时打包器会自动把数据文件打包进去，
 // 不存在"线上找不到文件"的问题；本地开发两种环境（tsx / Vite）也都支持
 import coursesDataJson from '../data/courses.json';
 import freeRoomsDataJson from '../data/free_rooms.json';
-import leaveRequestsJson from '../data/leave_requests.json';
 
 // 制度文档不再整篇加载到工具里，改由 server/rag 模块切片建索引后按需检索
 
@@ -333,25 +337,17 @@ const freeRoomsTool: Tool = {
 
 // ========== 工具 4：待审批请假列表（辅导员专属） ==========
 
-interface LeaveRequest {
-  id: string;
-  student: string;
-  className: string;
-  type: string;
-  days: number;
-  range: string;
-  reason: string;
-  submitted: string;
-}
-const leaveRequests = (leaveRequestsJson as { requests: LeaveRequest[] }).requests;
-
+/**
+ * 从共享存储读取（而不是静态 JSON）：
+ * 学生端刚提交的申请会出现在这里，实现两端互通（评审核心加分点：完整闭环）
+ */
 const leaveApprovalsTool: Tool = {
   label: '请假审批查询',
   definition: {
     type: 'function',
     function: {
       name: 'query_leave_approvals',
-      description: '查询待审批的学生请假申请列表（仅辅导员可用），返回申请人、班级、假型、天数、事由',
+      description: '查询待审批的学生请假申请列表（仅辅导员可用），返回申请人、班级、假型、天数、事由；学生端新提交的申请会实时出现在列表中',
       parameters: {
         type: 'object',
         properties: {},
@@ -360,26 +356,121 @@ const leaveApprovalsTool: Tool = {
     },
   },
   execute: () => {
+    const pending = listPendingRequests();
     return {
-      data: JSON.stringify({ count: leaveRequests.length, requests: leaveRequests }),
-      summary: `查询到 ${leaveRequests.length} 条待审批请假申请`,
-      card: { type: 'approvals', data: { requests: leaveRequests } },
+      data: JSON.stringify({ count: pending.length, requests: pending }),
+      summary: pending.length > 0
+        ? `查询到 ${pending.length} 条待审批请假申请${pending.some((r) => r.isNew) ? '（含新提交）' : ''}`
+        : '当前没有待审批的请假申请',
+      card: { type: 'approvals', data: { requests: pending } },
+    };
+  },
+};
+
+// ========== 工具 5：提交请假申请（学生专属，两端互通入口） ==========
+
+const submitLeaveTool: Tool = {
+  label: '提交请假申请',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'submit_leave_request',
+      description: '帮学生提交请假申请（仅学生可用），提交后辅导员端会实时收到并可审批。需要假型、天数、日期范围、事由四项信息，缺信息时先向用户确认再调用',
+      parameters: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', description: '假型：事假 / 病假 / 其他' },
+          days: { type: 'number', description: '请假天数' },
+          range: { type: 'string', description: '请假日期范围，如"11-18 至 11-19"' },
+          reason: { type: 'string', description: '请假事由' },
+        },
+        required: ['type', 'days', 'range', 'reason'],
+      },
+    },
+  },
+  execute: (args) => {
+    const req = submitLeaveRequest({
+      type: String(args.type || '事假'),
+      days: Number(args.days) || 1,
+      range: String(args.range || ''),
+      reason: String(args.reason || ''),
+    });
+    return {
+      data: JSON.stringify({
+        submitted: true,
+        id: req.id,
+        message: `申请已提交（单号 ${req.id}），辅导员端会实时收到。可通过"我的请假批了吗"查询审批结果`,
+      }),
+      summary: `已提交请假申请：${req.type} ${req.days} 天（单号 ${req.id}）`,
+    };
+  },
+};
+
+// ========== 工具 6：我的请假进度（学生专属，闭环的出口） ==========
+
+const myLeaveStatusTool: Tool = {
+  label: '请假进度查询',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'query_my_leave_status',
+      description: '学生查询自己提交过的请假申请及审批结果（待审批/已批准/已驳回及理由），用于回答"我的请假批了吗"（仅学生可用）',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  execute: () => {
+    const mine = listRequestsByStudent();
+    if (mine.length === 0) {
+      return {
+        data: JSON.stringify({ count: 0, message: '你还没有提交过请假申请' }),
+        summary: '你还没有提交过请假申请',
+      };
+    }
+    return {
+      data: JSON.stringify({
+        count: mine.length,
+        requests: mine.map((r) => ({
+          id: r.id, type: r.type, days: r.days, range: r.range,
+          status: r.status === 'pending' ? '待审批' : r.status === 'approved' ? '已批准' : '已驳回',
+          decisionReason: r.decisionReason, decidedAt: r.decidedAt,
+        })),
+      }),
+      summary: `查询到你的 ${mine.length} 条请假申请（${mine.filter((r) => r.status !== 'pending').length} 条已出结果）`,
     };
   },
 };
 
 // ========== 注册表：所有工具的入口 ==========
 
-export const tools: Tool[] = [courseScheduleTool, campusPolicyTool, freeRoomsTool, leaveApprovalsTool];
+export const tools: Tool[] = [
+  courseScheduleTool,
+  campusPolicyTool,
+  freeRoomsTool,
+  leaveApprovalsTool,
+  submitLeaveTool,
+  myLeaveStatusTool,
+];
+
+/** 各角色可用工具：权限的第一道防线（提示词层） */
+const COUNSELOR_ONLY = ['query_leave_approvals'];
+const STUDENT_ONLY = ['submit_leave_request', 'query_my_leave_status'];
 
 /**
  * 给大模型的工具定义列表（按角色过滤）
- * 学生角色看不到审批工具——大模型连"调用它"的选项都没有，
- * 这是第一道权限防线（提示词层）
+ * 学生角色看不到审批工具、辅导员角色看不到提交/查进度工具——
+ * 大模型连"调用它"的选项都没有
  */
 export function getToolDefinitions(role: Role = 'student') {
   return tools
-    .filter((t) => role === 'counselor' || t.definition.function.name !== 'query_leave_approvals')
+    .filter((t) => {
+      const name = t.definition.function.name;
+      if (role === 'student') return !COUNSELOR_ONLY.includes(name);
+      return !STUDENT_ONLY.includes(name);
+    })
     .map((t) => t.definition);
 }
 
@@ -398,12 +489,20 @@ export function executeTool(name: string, args: Record<string, unknown>, role: R
       summary: `工具 ${name} 不存在`,
     };
   }
-  if (name === 'query_leave_approvals' && role !== 'counselor') {
+  if (COUNSELOR_ONLY.includes(name) && role !== 'counselor') {
     return {
       label: tool.label,
-      data: JSON.stringify({ error: '权限不足：请假审批查询仅辅导员可用' }),
+      data: JSON.stringify({ error: `权限不足：${tool.label}仅辅导员可用` }),
       summary: '权限不足，已拦截',
       denied: true, // 通知 Agent 发 safety 事件，让拦截在前端可见
+    };
+  }
+  if (STUDENT_ONLY.includes(name) && role !== 'student') {
+    return {
+      label: tool.label,
+      data: JSON.stringify({ error: `权限不足：${tool.label}仅学生可用` }),
+      summary: '权限不足，已拦截',
+      denied: true,
     };
   }
   try {

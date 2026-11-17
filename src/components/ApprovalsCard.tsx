@@ -20,6 +20,8 @@ export interface LeaveRequestItem {
   range: string;
   reason: string;
   submitted: string;
+  /** 本次运行中学生端新提交的，打"新"徽标（两端互通可视化） */
+  isNew?: boolean;
 }
 
 export interface ApprovalsData {
@@ -38,12 +40,34 @@ function ApprovalsCard({
   // 驳回二次确认：待确认的条目 + 理由输入
   const [confirming, setConfirming] = useState<LeaveRequestItem | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [busy, setBusy] = useState(false);
   // 已处理的直接从列表移除（评审 P1：状态回写要可见），只留待处理
   const pending = data.requests.filter((r) => !decisions[r.id]);
 
-  const decide = (r: LeaveRequestItem, d: 'approved' | 'rejected', reason?: string) => {
+  /**
+   * 审批结果通过 API 写回服务端共享存储——
+   * 学生端随后问"我的请假批了吗"能查到真实结果（两端互通闭环）
+   */
+  const decide = async (r: LeaveRequestItem, d: 'approved' | 'rejected', reason?: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/leave/decide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: r.id, decision: d, reason }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch {
+      // 后端不可达时仍完成本地演示（静态数据模式），不回执"已写回"
+      onDecide?.(r, d, reason);
+      setDecisions((s) => ({ ...s, [r.id]: d }));
+      setBusy(false);
+      return;
+    }
     setDecisions((s) => ({ ...s, [r.id]: d }));
     onDecide?.(r, d, reason); // 通知对话流追加回执消息，形成"办理-回执-追踪"闭环
+    setBusy(false);
   };
 
   const confirmReject = () => {
@@ -72,6 +96,7 @@ function ApprovalsCard({
                 <span className="appr-name">{r.student}</span>
                 <span className="appr-class">{r.className}</span>
                 <span className={`appr-type ${r.type === '病假' ? 'sick' : ''}`}>{r.type} · {r.days} 天</span>
+                {r.isNew && <span className="appr-new">新</span>}
               </div>
               <div className="appr-reason">{r.reason}</div>
               <div className="appr-meta">{r.range} · 提交于 {r.submitted}</div>

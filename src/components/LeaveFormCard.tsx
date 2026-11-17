@@ -47,7 +47,7 @@ function LeaveFormCard({
         <button className="leave-btn" onClick={onDownload} disabled={busy}>
           {busy ? '生成中…' : done ? '✓ 已下载' : '⬇ 下载 .docx'}
         </button>
-        <span className="leave-hint">条款原文已附在表末，供辅导员参考</span>
+        <span className="leave-hint">也可以直接对我说「帮我请 X 天假」，一键提交给辅导员审批</span>
       </div>
     </div>
   );

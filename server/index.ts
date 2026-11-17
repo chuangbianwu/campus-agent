@@ -14,6 +14,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { join } from 'path';
 import { runAgentChat } from './agent';
+import { submitLeaveRequest, decideRequest, pendingCount } from './store';
 
 // 加载 .env 文件（从项目根目录读取）
 dotenv.config({ path: join(process.cwd(), '.env') });
@@ -68,6 +69,35 @@ app.post('/api/chat', async (req, res) => {
 // 健康检查接口
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// ---------- 请假互通接口（共享内存存储，见 server/store.ts） ----------
+
+// 学生提交请假申请
+app.post('/api/leave', (req, res) => {
+  const { type, days, range, reason } = req.body || {};
+  if (!type || !days || !range || !reason) {
+    res.status(400).json({ error: '缺少必填字段：type/days/range/reason' });
+    return;
+  }
+  const created = submitLeaveRequest({ type: String(type), days: Number(days), range: String(range), reason: String(reason) });
+  res.json({ ok: true, request: created });
+});
+
+// 辅导员批准/驳回（持久化，学生端可查）
+app.post('/api/leave/decide', (req, res) => {
+  const { id, decision, reason } = req.body || {};
+  const updated = decideRequest(String(id), decision, reason ? String(reason) : undefined);
+  if (!updated) {
+    res.status(404).json({ error: '申请不存在或已处理' });
+    return;
+  }
+  res.json({ ok: true, request: updated, pending: pendingCount() });
+});
+
+// 待审批数量（教师端看板徽标）
+app.get('/api/leave', (_req, res) => {
+  res.json({ pending: pendingCount() });
 });
 
 app.listen(PORT, () => {
