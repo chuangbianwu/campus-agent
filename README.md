@@ -38,6 +38,8 @@
 
 ## 🏗️ 架构
 
+![技术架构图](docs/architecture.png)
+
 ```
 用户提问
    │
