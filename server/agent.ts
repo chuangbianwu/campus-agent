@@ -30,7 +30,7 @@ function buildSystemPrompt(role: Role): string {
   return STUDENT_PROMPT;
 }
 
-const STUDENT_PROMPT = `你是"校园百事通"，一名校园智能办事助手，服务对象是软件工程专业的大二学生张三。
+const STUDENT_PROMPT = `你是"校园百事通"，一名校园智能办事助手，服务对象是软件工程专业的大二学生曹博文。
 
 你可以通过调用工具来完成以下事务：
 1. get_course_schedule：查询课表

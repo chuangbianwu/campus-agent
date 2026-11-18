@@ -38,8 +38,8 @@ export const QUICK_PROMPTS: Record<NavKey, string[]> = {
 
 /** 辅导员角色的快捷提示词（审批是核心场景） */
 export const COUNSELOR_QUICK_PROMPTS: Record<NavKey, string[]> = {
-  assistant: ['有哪些请假待审批？', '请假审批权限是怎么规定的？', '张三周五下午有课吗？'],
-  schedule: ['张三今天有课吗？', '张三周五下午有课吗？', '周三有哪些课？'],
+  assistant: ['有哪些请假待审批？', '请假审批权限是怎么规定的？', '曹博文周五下午有课吗？'],
+  schedule: ['曹博文今天有课吗？', '曹博文周五下午有课吗？', '周三有哪些课？'],
   timetable: [],
   knowledge: ['请假超过 7 天找谁批？', '奖学金怎么评？', '宿舍晚上几点关门？'],
   about: [],

@@ -130,7 +130,7 @@ function Board({ role }: { role: RoleKey }) {
       {role === 'counselor' && <MemoBlock />}
 
       <div>
-        <div className="board-title">{role === 'counselor' ? `张三 · ${today.label}` : today.label}</div>
+        <div className="board-title">{role === 'counselor' ? `曹博文 · ${today.label}` : today.label}</div>
         {today.courses.map((c, i) => (
           <div key={i} className="today-row">
             <span className="today-time">{c.time}</span>

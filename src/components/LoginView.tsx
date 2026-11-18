@@ -13,7 +13,7 @@ export type RoleKey = 'student' | 'counselor';
 
 export const ROLE_INFO: Record<RoleKey, { name: string; title: string; desc: string }> = {
   student: {
-    name: '张三',
+    name: '曹博文',
     title: '学生 · 软件工程 大二',
     desc: '查课表、问制度、找自习教室、生成请假表',
   },
