@@ -160,3 +160,21 @@ React 19 · TypeScript · Vite 7 · Tailwind CSS · shadcn/ui · DeepSeek API（
     ├── lib/leaveForm.ts # 浏览器端 .docx 申请表合成
     └── components/      # LoginView / Rail / Board / 四种生成式卡片 / 引用抽屉…
 ```
+
+## 👤 团队信息
+
+| 项目 | 内容 |
+|---|---|
+| 参赛作品 | 校园百事通 · AI Native 校园办事助手 |
+| 赛事 | 传智杯·全国高校 AI Web 开发挑战赛 |
+| 开发者 | 曹博文 |
+| 学校 | 天津商务职业学院 · 软件工程专业（大二） |
+| 联系方式 | 见报名平台登记信息 |
+
+## 📦 提交材料索引
+
+- 演示视频：见提交平台（MP4 · 1080p · 普通话讲解）
+- 技术文档：`docs/技术文档.pdf`
+- 评测报告：`docs/EVALUATION.md`（RAG 命中率 / 护栏拦截率 / 端到端用例）
+- 演示脚本：`docs/DEMO_SCRIPT.md`
+- 在线演示（加分项）：`https://campus-agent-jet.vercel.app`（部署于 Vercel；境内访问 `*.vercel.app` 可能受 DNS 影响，如无法打开请参照上文本地运行，30 秒即可启动）
